@@ -1,0 +1,691 @@
+[
+    {
+        "id": "3c2c0068-e630-426b-b0e7-e48a6642b72b",
+        "name": "Ultimate Cr\u00e8me Br\u00fbl\u00e9e",
+        "total_co2": 1.22,
+        "servings": 4.0,
+        "co2_per_serving": 0.305,
+        "ingredients": [
+            {
+                "item": "Cream, whipping, 38 % fat",
+                "amount": 426.0,
+                "unit": "ml",
+                "match": "Cream, whipping, 38 % fat",
+                "grams": 426.0,
+                "co2": 0.737
+            },
+            {
+                "item": "Milk, whole, 3.5 % fat",
+                "amount": 100.0,
+                "unit": "ml",
+                "match": "Milk, whole, 3.5 % fat",
+                "grams": 100.0,
+                "co2": 0.05
+            },
+            {
+                "item": "Sugar, sucrose, white",
+                "amount": 3.0,
+                "unit": "g",
+                "match": "Sugar, sucrose, white",
+                "grams": 3.0,
+                "co2": 0.008
+            },
+            {
+                "item": "Eggs, chicken, free-range hens (indoor), raw",
+                "amount": 5.0,
+                "unit": "piece",
+                "match": "Eggs, chicken, free-range hens (indoor), raw",
+                "grams": 300.0,
+                "co2": 0.292
+            },
+            {
+                "item": "Sugar, sucrose, white",
+                "amount": 50.0,
+                "unit": "g",
+                "match": "Sugar, sucrose, white",
+                "grams": 50.0,
+                "co2": 0.133
+            }
+        ],
+        "tags": [
+            "dessert",
+            "sweet"
+        ],
+        "source": "https://www.bbcgoodfood.com/recipes/ultimate-creme-brulee",
+        "notes": "Heat the oven to 180C/160C fan/gas 4. Sit four 175ml ramekins in a deep roasting tin at least 7.5cm deep (or a large deep cake tin), one that will enable a baking tray to sit well above the ramekins when laid across the top of the tin.\r\nPour the large and small cartons of double cream into a medium pan with the milk.\r\nLay the vanilla pod on a board and slice lengthways through the middle with a sharp knife to split it in two. Use the tip of the knife to scrape out all the tiny seeds into the cream mixture. Drop the vanilla pod in as well, and set aside.\r\nPut the egg yolks and sugar in a mixing bowl and whisk for 1 min with an electric hand whisk until paler in colour and a bit fluffy.\r\nPut the pan with the cream on a medium heat and bring almost to the boil. As soon as you see bubbles appear round the edge, take the pan off the heat.\r\nPour the hot cream into the beaten egg yolks, stirring with a wire whisk as you do so, and scraping out the seeds from the pan.\r\nSet a fine sieve over a large wide jug or bowl and pour the hot mixture through to strain it, encouraging any stray vanilla seeds through at the end.\r\nUsing a big spoon, scoop off all the pale foam that is sitting on the top of the liquid (this will be several spoonfuls) and discard. Give the mixture a stir.\r\nPour in enough hot water (from the tap) into the roasting tin to come about 1.5cm up the sides of the ramekins. Pour the hot cream into the ramekins so you fill them up right to the top \u2013 it\u2019s easier to spoon in the last little bit.\r\nPut them in the oven and lay a baking sheet over the top of the tin so it sits well above the ramekins and completely covers them, but not the whole tin, leaving a small gap at one side to allow air to circulate.\r\nBake for 30-35 mins until the mixture is softly set. To check, gently sway the roasting tin and if the cr\u00e8me br\u00fbl\u00e9es are ready, they will wobble a bit like a jelly in the middle. Don\u2019t let them get too firm.\r\nLift the ramekins out of the roasting tin with oven gloves and set them on a wire rack to cool for a couple of minutes only, then put in the fridge to cool completely. This can be done overnight without affecting the texture.\r\nWhen ready to serve, wipe round the top edge of the dishes, sprinkle 1\u00bd tsp of caster sugar over each ramekin and spread it out with the back of a spoon to completely cover.\r\nSpray with a little water using a fine spray (the sort you buy in a craft shop) to just dampen the sugar \u2013 then use a blow torch to caramelise it. Hold the flame just above the sugar and keep moving it round and round until caramelised. Serve when the br\u00fbl\u00e9e is firm, or within an hour or two.",
+        "original_ingredients": "2 cartons double cream 1 large (284ml) plus 1 small (142ml)\r\n100ml whole milk\r\n1 vanilla pod\r\n5 egg yolks\r\n50g golden caster sugar plus extra for the topping",
+        "metadata": {
+            "rating": null,
+            "nutrition": {
+                "kcal": 551.0,
+                "fat": 48.5,
+                "carbs": 18.4,
+                "protein": 12.3
+            }
+        }
+    },
+    {
+        "id": "4f070129-3ca7-4173-9cd3-228a0eb10c3a",
+        "name": "Easy spaghetti Bolognese",
+        "total_co2": 18.079,
+        "servings": 4.0,
+        "co2_per_serving": 4.52,
+        "ingredients": [
+            {
+                "item": "Olive oil",
+                "amount": 3.0,
+                "unit": "tbsp",
+                "match": "Olive oil",
+                "grams": 45.0,
+                "co2": 0.265
+            },
+            {
+                "item": "Beef, mince, 5-10% fat, raw",
+                "amount": 300.0,
+                "unit": "g",
+                "match": "Beef, mince, 5-10% fat, raw",
+                "grams": 300.0,
+                "co2": 15.184
+            },
+            {
+                "item": "Pork, mince, 5-10% fat, raw",
+                "amount": 200.0,
+                "unit": "g",
+                "match": "Pork, mince, 5-10% fat, raw",
+                "grams": 200.0,
+                "co2": 0.735
+            },
+            {
+                "item": "Onion, raw",
+                "amount": 1.0,
+                "unit": "piece",
+                "match": "Onion, raw",
+                "grams": 150.0,
+                "co2": 0.041
+            },
+            {
+                "item": "Garlic, raw",
+                "amount": 2.5,
+                "unit": "piece",
+                "match": "Garlic, raw",
+                "grams": 12.5,
+                "co2": 0.016
+            },
+            {
+                "item": "Tomato, peeled, canned",
+                "amount": 500.0,
+                "unit": "g",
+                "match": "Tomato, peeled, canned",
+                "grams": 500.0,
+                "co2": 0.528
+            },
+            {
+                "item": "Tomato paste, concentrated",
+                "amount": 1.0,
+                "unit": "tbsp",
+                "match": "Tomato paste, concentrated",
+                "grams": 15.0,
+                "co2": 0.04
+            },
+            {
+                "item": "Wine, red",
+                "amount": 100.0,
+                "unit": "ml",
+                "match": "Wine, red",
+                "grams": 100.0,
+                "co2": 0.165
+            },
+            {
+                "item": "Basil, dried",
+                "amount": 1.0,
+                "unit": "tsp",
+                "match": "Basil, dried",
+                "grams": 5.0,
+                "co2": 0.014
+            },
+            {
+                "item": "Pasta, raw",
+                "amount": 400.0,
+                "unit": "g",
+                "match": "Pasta, raw",
+                "grams": 400.0,
+                "co2": 0.821
+            },
+            {
+                "item": "Cheese, hard, Parmesan, 32 % fidm.",
+                "amount": 50.0,
+                "unit": "g",
+                "match": "Cheese, hard, Parmesan, 32 % fidm.",
+                "grams": 50.0,
+                "co2": 0.271
+            }
+        ],
+        "tags": [
+            "dinner",
+            "meat"
+        ],
+        "source": "https://www.bbcgoodfood.com/recipes/classic-bolognese",
+        "notes": "Put 1 tbsp of the oil in a large saucepan over a medium-high heat, add the beef and fry until well browned. Tip out into a dish and repeat with 1 tbsp oil and the pork. Tip the pork into the dish with the beef and put the pan back on the heat with the remaining oil. Turn the heat down and cook the shallots for 8-10 mins or until very soft, then add the garlic. Tip the meat back into the pan and add the passata, pur\u00e9e, wine and oregano. Stir everything together, cover and simmer over a low heat, stirring occasionally, for 45 mins.\r\nCook the spaghetti following pack instructions, then stir half the parmesan into the Bolognese. Put a spoonful of the pasta water into the sauce to loosen it if it looks too thick, then drain the spaghetti. For a better flavour, tip the pasta onto the sauce, toss everything together to coat, and season well (or serve with the sauce on top). Add the remaining parmesan and a few basil leaves.",
+        "original_ingredients": "3 tbsp olive oil\r\n300g beef mince\r\n200g pork mince\r\n2 large shallots finely chopped\r\n2-3 garlic cloves crushed\r\n500g passata\r\n1 tbsp tomato pur\u00e9e\r\n100ml red wine\r\n1 tsp dried oregano\r\n400g spaghetti\r\n50g parmesan finely grated\r\na few basil leaves",
+        "metadata": {
+            "rating": null,
+            "nutrition": {
+                "kcal": 793.0,
+                "fat": 29.3,
+                "carbs": 81.4,
+                "protein": 44.1
+            }
+        }
+    },
+    {
+        "id": "b1906f0c-45b0-4929-8222-1ac547b4dd19",
+        "name": "Award Winning Chili Con Carne",
+        "total_co2": 60.993,
+        "servings": 8.0,
+        "co2_per_serving": 7.624,
+        "ingredients": [
+            {
+                "item": "Sunflower oil",
+                "amount": 4.0,
+                "unit": "tbsp",
+                "match": "Sunflower oil",
+                "grams": 60.0,
+                "co2": 0.167
+            },
+            {
+                "item": "Pepper, sweet, red, raw",
+                "amount": 1.0,
+                "unit": "piece",
+                "match": "Pepper, sweet, red, raw",
+                "grams": 150.0,
+                "co2": 0.161
+            },
+            {
+                "item": "Onion, raw",
+                "amount": 1.0,
+                "unit": "piece",
+                "match": "Onion, raw",
+                "grams": 150.0,
+                "co2": 0.041
+            },
+            {
+                "item": "Beef, mince, 5-10% fat, raw",
+                "amount": 2.5,
+                "unit": "lb",
+                "match": "Beef, mince, 5-10% fat, raw",
+                "grams": 1135.0,
+                "co2": 57.448
+            },
+            {
+                "item": "Wine, red",
+                "amount": 0.66666668653488,
+                "unit": "cup",
+                "match": "Wine, red",
+                "grams": 160.0,
+                "co2": 0.264
+            },
+            {
+                "item": "Bouillon, beef, concentrated, cube",
+                "amount": 2.0,
+                "unit": "piece",
+                "match": "Bouillon, beef, concentrated, cube",
+                "grams": 20.0,
+                "co2": 0.199
+            },
+            {
+                "item": "Tomato, peeled, canned",
+                "amount": 32.0,
+                "unit": "oz",
+                "match": "Tomato, peeled, canned",
+                "grams": 907.2,
+                "co2": 0.957
+            },
+            {
+                "item": "Tomato paste, concentrated",
+                "amount": 12.0,
+                "unit": "oz",
+                "match": "Tomato paste, concentrated",
+                "grams": 340.2,
+                "co2": 0.909
+            },
+            {
+                "item": "Garlic, raw",
+                "amount": 2.0,
+                "unit": "piece",
+                "match": "Garlic, raw",
+                "grams": 10.0,
+                "co2": 0.012
+            },
+            {
+                "item": "Basil, dried",
+                "amount": 2.0,
+                "unit": "tbsp",
+                "match": "Basil, dried",
+                "grams": 30.0,
+                "co2": 0.084
+            },
+            {
+                "item": "Basil, dried",
+                "amount": 2.5,
+                "unit": "tsp",
+                "match": "Basil, dried",
+                "grams": 12.5,
+                "co2": 0.035
+            },
+            {
+                "item": "Basil, dried",
+                "amount": 2.5,
+                "unit": "tsp",
+                "match": "Basil, dried",
+                "grams": 12.5,
+                "co2": 0.035
+            },
+            {
+                "item": "Basil, dried",
+                "amount": 1.5,
+                "unit": "tsp",
+                "match": "Basil, dried",
+                "grams": 7.5,
+                "co2": 0.021
+            },
+            {
+                "item": "Basil, dried",
+                "amount": 1.0,
+                "unit": "tsp",
+                "match": "Basil, dried",
+                "grams": 5.0,
+                "co2": 0.014
+            },
+            {
+                "item": "Basil, dried",
+                "amount": 0.5,
+                "unit": "tsp",
+                "match": "Basil, dried",
+                "grams": 2.5,
+                "co2": 0.007
+            },
+            {
+                "item": "Salt, table",
+                "amount": 1.0,
+                "unit": "tsp",
+                "match": "Salt, table",
+                "grams": 5.0,
+                "co2": 0.002
+            },
+            {
+                "item": "Pepper, black",
+                "amount": 0.5,
+                "unit": "tsp",
+                "match": "Pepper, black",
+                "grams": 2.5,
+                "co2": 0.013
+            },
+            {
+                "item": "Kidney beans",
+                "amount": 15.0,
+                "unit": "oz",
+                "match": "Kidney beans",
+                "grams": 425.2,
+                "co2": 0.496
+            },
+            {
+                "item": "Pepper, hot chili, raw",
+                "amount": 12.0,
+                "unit": "drop",
+                "match": "Pepper, hot chili, raw",
+                "grams": 0.6,
+                "co2": 0.001
+            },
+            {
+                "item": "Wheat, flour, wholemeal",
+                "amount": 3.0,
+                "unit": "tbsp",
+                "match": "Wheat, flour, wholemeal",
+                "grams": 45.0,
+                "co2": 0.056
+            },
+            {
+                "item": "Corn flour",
+                "amount": 3.0,
+                "unit": "tbsp",
+                "match": "Corn flour",
+                "grams": 45.0,
+                "co2": 0.072
+            },
+            {
+                "item": "Water, tap, drinking, average values",
+                "amount": 0.5,
+                "unit": "cup",
+                "match": "Water, tap, drinking, average values",
+                "grams": 120.0,
+                "co2": 0.0
+            }
+        ],
+        "tags": [
+            "dinner",
+            "meat"
+        ],
+        "source": "https://www.allrecipes.com/recipe/89993/award-winning-chili-con-carne/",
+        "notes": "Heat oil in a large saucepan over medium heat. Add green pepper and onion; cook and stir until softened. Stir in ground beef and cook until browned. Stir in wine and crumble over bouillon cubes; cook for a few minutes.\r\nStir in chopped tomatoes, tomato paste, and garlic. Season with parsley, basil, chili powder, paprika, cayenne pepper, and oregano. Stir in salt and pepper.\r\nBring to a boil over high heat. Reduce heat to medium-low; cover, and simmer for 90 minutes, stirring occasionally.\r\nStir in kidney beans and hot pepper sauce. Add reserved tomato juice if more liquid is needed; continue to simmer for an additional 30 minutes.\r\nWhisk flour, cornmeal, and water together in a small bowl until smooth; stir into chili and simmer for a further 10 minutes, or until chili has thickened up.",
+        "original_ingredients": "4 tablespoons vegetable oil\r\n1 green bell pepper, chopped\r\n1 yellow onion, chopped\r\n2.5 pounds lean ground beef\r\n0.66666668653488 cup red wine\r\n2 beef bouillon cubes\r\n2 (16 ounce) cans whole peeled tomatoes, chopped, juice reserved\r\n1 (12 ounce) can tomato paste\r\n2 garlic cloves, crushed\r\n2 tablespoons dried parsley\r\n2.5 teaspoons dried basil\r\n2.5 teaspoons chili powder\r\n1.5 teaspoons paprika\r\n1 teaspoon cayenne pepper\r\n0.5 teaspoon dried oregano\r\n1 teaspoon salt\r\n0.5 teaspoon black pepper\r\n1 (15 ounce) can kidney beans, drained\r\n12 drops hot pepper sauce (e.g. Tabasco\u2122)\r\n3 tablespoons flour\r\n3 tablespoons corn meal\r\n0.5 cup water",
+        "metadata": {
+            "rating": null,
+            "nutrition": {
+                "kcal": 495.0,
+                "fat": 22.8,
+                "carbs": 25.8,
+                "protein": 37.5
+            }
+        }
+    },
+    {
+        "id": "f057aa7c-46f8-4fc1-ad52-c311ee265d08",
+        "name": "Danish Pancakes",
+        "total_co2": 0.758,
+        "servings": 18.0,
+        "co2_per_serving": 0.042,
+        "ingredients": [
+            {
+                "item": "Wheat, flour, wholemeal",
+                "amount": 375.0,
+                "unit": "g",
+                "match": "Wheat, flour, wholemeal",
+                "grams": 375.0,
+                "co2": 0.465
+            },
+            {
+                "item": "Salt, table",
+                "amount": 1.0,
+                "unit": "tsp",
+                "match": "Salt, table",
+                "grams": 5.0,
+                "co2": 0.002
+            },
+            {
+                "item": "Sugar, sucrose, white",
+                "amount": 1.0,
+                "unit": "tsp",
+                "match": "Sugar, sucrose, white",
+                "grams": 5.0,
+                "co2": 0.013
+            },
+            {
+                "item": "Sugar, sucrose, white",
+                "amount": 1.0,
+                "unit": "tbsp",
+                "match": "Sugar, sucrose, white",
+                "grams": 15.0,
+                "co2": 0.04
+            },
+            {
+                "item": "Milk, whole, 3.5 % fat",
+                "amount": 6.0,
+                "unit": "g",
+                "match": "Milk, whole, 3.5 % fat",
+                "grams": 6.0,
+                "co2": 0.003
+            },
+            {
+                "item": "Beer, lager, alc. 4.4 % by vol.",
+                "amount": 1.0,
+                "unit": "g",
+                "match": "Beer, lager, alc. 4.4 % by vol.",
+                "grams": 1.0,
+                "co2": 0.001
+            },
+            {
+                "item": "Eggs, chicken, free-range hens (indoor), raw",
+                "amount": 4.0,
+                "unit": "piece",
+                "match": "Eggs, chicken, free-range hens (indoor), raw",
+                "grams": 240.0,
+                "co2": 0.234
+            }
+        ],
+        "tags": [
+            "dessert",
+            "snack",
+            "vegetarian"
+        ],
+        "source": "https://nordicfoodliving.com/danish-pancakes/",
+        "notes": "In a large bowl; mix all-purpose flour, salt, vanilla sugar and sugar.\r\nSlowly add the milk while whisking using a mixer\r\nFinally, add the eggs one-by-one while whisking using the mixer.\r\nLet the pancake batter settle in the fridge for about 30 minutes.\r\nHeat up a frying pan; add a little butter and some pancake batter. Distribute the batter by tilt the pan around in circular movements. The batter should only just cover the pan. Danish pancakes are as thin as possible.\r\nFry the pancake until the batter is not liquid anymore, then flip it over and fry for another couple of minutes.\r\nContinue making the rest of the pancakes.",
+        "original_ingredients": "375 g all-purpose flour\r\n1 tsp salt\r\n1 tsp vanilla sugar (or vanilla essence)\r\n1 tbsp sugar\r\n6 dl milk\r\n1 dl beer\r\n4 eggs",
+        "rating": {
+            "label": "Very Low",
+            "color": "#4CAF50",
+            "emoji": "\ud83d\udfe2"
+        },
+        "metadata": {
+            "nutrition": {
+                "kcal": 93.0,
+                "fat": 1.8,
+                "carbs": 11.0,
+                "protein": 4.0
+            }
+        }
+    },
+    {
+        "id": "cf477260-f3a4-4472-8609-f1bd3a929409",
+        "name": "Spinach Artichoke Sun-Dried Tomato Breakfast Casserole",
+        "total_co2": 3.415,
+        "servings": 12.0,
+        "co2_per_serving": 0.285,
+        "ingredients": [
+            {
+                "item": "Olive oil",
+                "amount": 1.0,
+                "unit": "tbsp",
+                "match": "Olive oil",
+                "grams": 15.0,
+                "co2": 0.088
+            },
+            {
+                "item": "Onion, raw",
+                "amount": 1.0,
+                "unit": "piece",
+                "match": "Onion, raw",
+                "grams": 150.0,
+                "co2": 0.041
+            },
+            {
+                "item": "Spinach, raw",
+                "amount": 4.0,
+                "unit": "cup",
+                "match": "Spinach, raw",
+                "grams": 960.0,
+                "co2": 0.463
+            },
+            {
+                "item": "Garlic, raw",
+                "amount": 2.0,
+                "unit": "piece",
+                "match": "Garlic, raw",
+                "grams": 10.0,
+                "co2": 0.012
+            },
+            {
+                "item": "Artichoke, raw",
+                "amount": 14.0,
+                "unit": "oz",
+                "match": "Artichoke, raw",
+                "grams": 396.9,
+                "co2": 0.389
+            },
+            {
+                "item": "Tomato, dried",
+                "amount": 7.0,
+                "unit": "oz",
+                "match": "Tomato, dried",
+                "grams": 198.5,
+                "co2": 0.54
+            },
+            {
+                "item": "Eggs, chicken, free-range hens (indoor), raw",
+                "amount": 18.0,
+                "unit": "piece",
+                "match": "Eggs, chicken, free-range hens (indoor), raw",
+                "grams": 1080.0,
+                "co2": 1.052
+            },
+            {
+                "item": "Cheese, cottage, 20 % fidm.",
+                "amount": 1.5,
+                "unit": "cup",
+                "match": "Cheese, cottage, 20 % fidm.",
+                "grams": 360.0,
+                "co2": 0.577
+            },
+            {
+                "item": "Milk, whole, 3.5 % fat",
+                "amount": 0.5,
+                "unit": "cup",
+                "match": "Milk, whole, 3.5 % fat",
+                "grams": 120.0,
+                "co2": 0.06
+            },
+            {
+                "item": "Cheese, semihard, Feta, 40 % fidm",
+                "amount": 0.5,
+                "unit": "cup",
+                "match": "Cheese, semihard, Feta, 40 % fidm",
+                "grams": 120.0,
+                "co2": 0.192
+            }
+        ],
+        "tags": [
+            "breakfast",
+            "brunch",
+            "vegetarian"
+        ],
+        "source": "https://www.twopeasandtheirpod.com/spinach-artichoke-sun-dried-tomato-breakfast-casserole/",
+        "notes": "Preheat oven to 350 degrees F. Grease a 9\u00d713-inch baking dish with nonstick cooking spray and set aside.\r\nIn a large skillet, heat olive oil over medium high heat. Add the shallot and cook for 2 minutes. Stir in the spinach and garlic. Cook for 3 minutes or until the spinach is wilted. Remove from heat. Stir in the artichoke hearts and sun-dried tomatoes. Season with salt and black pepper, to taste.\r\nPour vegetable mixture into the bottom of the prepared pan and spread out evenly. Set aside.\r\nIn a large bowl, whisk together eggs, cottage cheese, and milk. Season with salt and black pepper, to taste.\r\nPour egg mixture over the veggies. Use a spatula to give it a little stir. Top evenly with feta cheese.\r\nBake for 30 to 40 minutes or until eggs are set and slightly golden around the edges. Remove from oven and let cool for 5 minutes. Garnish with fresh herbs, if desired. Cut into squares and serve warm.",
+        "original_ingredients": "1 tablespoon olive oil\r\n1 shallot, (minced)\r\n4 cups packed spinach leaves\r\n2 cloves garlic, (minced)\r\nKosher salt and black pepper, (to taste)\r\n14 oz can artichoke hearts, (drained and chopped)\r\n7 oz jar sun-dried tomatoes, (drained and chopped)\r\n18 large eggs\r\n1 1/2 cups cottage cheese\r\n1/2 cup milk\r\n1/2 cup feta cheese\r\nFor garnish: chopped parsley, basil, or chives",
+        "rating": {
+            "label": "Very Low",
+            "color": "#4CAF50",
+            "emoji": "\ud83d\udfe2"
+        },
+        "metadata": {
+            "nutrition": {
+                "kcal": 290.0,
+                "fat": 14.4,
+                "carbs": 13.2,
+                "protein": 22.9
+            }
+        }
+    },
+    {
+        "id": "aeef7bb7-277f-455b-876e-ee2779f5dc41",
+        "name": "Burrito bowl with chipotle black beans",
+        "total_co2": 1.507,
+        "servings": 2.0,
+        "co2_per_serving": 0.754,
+        "ingredients": [
+            {
+                "item": "Rice, parboiled, raw",
+                "amount": 125.0,
+                "unit": "g",
+                "match": "Rice, parboiled, raw",
+                "grams": 125.0,
+                "co2": 0.632
+            },
+            {
+                "item": "Olive oil",
+                "amount": 1.0,
+                "unit": "tbsp",
+                "match": "Olive oil",
+                "grams": 15.0,
+                "co2": 0.088
+            },
+            {
+                "item": "Garlic, raw",
+                "amount": 2.0,
+                "unit": "piece",
+                "match": "Garlic, raw",
+                "grams": 10.0,
+                "co2": 0.012
+            },
+            {
+                "item": "Black beans",
+                "amount": 400.0,
+                "unit": "g",
+                "match": "Black beans",
+                "grams": 400.0,
+                "co2": 0.466
+            },
+            {
+                "item": "Vinegar",
+                "amount": 1.0,
+                "unit": "tbsp",
+                "match": "Vinegar",
+                "grams": 15.0,
+                "co2": 0.024
+            },
+            {
+                "item": "Honey",
+                "amount": 1.0,
+                "unit": "tsp",
+                "match": "Honey",
+                "grams": 5.0,
+                "co2": 0.004
+            },
+            {
+                "item": "Green curry paste",
+                "amount": 1.0,
+                "unit": "tbsp",
+                "match": "Green curry paste",
+                "grams": 15.0,
+                "co2": 0.031
+            },
+            {
+                "item": "Kale, raw",
+                "amount": 100.0,
+                "unit": "g",
+                "match": "Kale, raw",
+                "grams": 100.0,
+                "co2": 0.029
+            },
+            {
+                "item": "Avocado, raw",
+                "amount": 1.0,
+                "unit": "piece",
+                "match": "Avocado, raw",
+                "grams": 100.0,
+                "co2": 0.122
+            },
+            {
+                "item": "Tomato, ripe, raw, origin unknown",
+                "amount": 1.0,
+                "unit": "piece",
+                "match": "Tomato, ripe, raw, origin unknown",
+                "grams": 120.0,
+                "co2": 0.058
+            },
+            {
+                "item": "Onion, raw",
+                "amount": 1.0,
+                "unit": "piece",
+                "match": "Onion, raw",
+                "grams": 150.0,
+                "co2": 0.041
+            }
+        ],
+        "tags": [],
+        "source": "https://www.bbcgoodfood.com/recipes/burrito-bowl-chipotle-black-beans",
+        "notes": "Cook the rice following pack instructions, then drain and return to the pan to keep warm. In a frying pan, heat the oil, add the garlic and fry for 2 mins or until golden. Add the beans, vinegar, honey and chipotle. Season and warm through for 2 mins.\r\nBoil the kale for 1 min, then drain, squeezing out any excess water. Divide the rice between big shallow bowls and top with the beans, kale, avocado, tomato and onion. Serve with hot sauce, coriander and lime wedges, if you like.",
+        "original_ingredients": "125g basmati rice\r\n1 tbsp olive oil\r\n2 garlic cloves chopped\r\n400g can black beans drained and rinsed\r\n1 tbsp cider vinegar\r\n1 tsp honey\r\n1 tbsp chipotle paste\r\n100g chopped curly kale\r\n1 avocado halved and sliced\r\n1 medium tomato chopped\r\n1 small red onion chopped\r\nchipotle hot sauce\r\ncoriander leaves\r\nlime wedges",
+        "rating": {
+            "label": "Low",
+            "color": "#4CAF50",
+            "emoji": "\ud83d\udfe2"
+        },
+        "metadata": {
+            "nutrition": {
+                "kcal": 628.0,
+                "fat": 17.6,
+                "carbs": 76.5,
+                "protein": 20.9
+            }
+        }
+    }
+]

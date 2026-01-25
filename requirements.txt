@@ -1,0 +1,7 @@
+flask
+pandas
+quantulum3
+recipe-scrapers
+rapidfuzz
+openpyxl
+gunicorn
