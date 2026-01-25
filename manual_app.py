@@ -1009,29 +1009,29 @@ def update(recipe_id):
 
         detailed_ingredients.append({
             "item": match_name,
-            "amount": amt,
+            "amount": float(amt),
             "unit": unit,
             "match": match_name,
-            "grams": round(grams, 1),
-            "co2": round(item_co2, 3)
+            "grams": float(round(grams, 1)),
+            "co2": float(round(item_co2, 3))
         })
 
     # Calculate CO2 per serving and rating
     # Convert to Python float (pandas returns numpy types which PostgreSQL can't handle)
     total_co2 = float(total_co2)
-    co2_per_serving = round(total_co2 / servings, 3) if servings > 0 else 0
+    co2_per_serving = float(round(total_co2 / servings, 3)) if servings > 0 else 0.0
     rating = calculate_rating(co2_per_serving)
 
-    # Nutrition per serving
+    # Nutrition per serving (all converted to Python float)
     nutrition = {
-        "kcal": float(round(total_kcal / servings, 0)) if servings > 0 else 0,
-        "fat": float(round(total_fat / servings, 1)) if servings > 0 else 0,
-        "carbs": float(round(total_carbs / servings, 1)) if servings > 0 else 0,
-        "protein": float(round(total_protein / servings, 1)) if servings > 0 else 0
+        "kcal": float(round(total_kcal / servings, 0)) if servings > 0 else 0.0,
+        "fat": float(round(total_fat / servings, 1)) if servings > 0 else 0.0,
+        "carbs": float(round(total_carbs / servings, 1)) if servings > 0 else 0.0,
+        "protein": float(round(total_protein / servings, 1)) if servings > 0 else 0.0
     }
 
     # Update in database
-    update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, float(total_co2), servings, nutrition, tags, source, notes, original_ingredients, rating)
+    update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
 
     return f"""
     {MATERIAL_CSS}
