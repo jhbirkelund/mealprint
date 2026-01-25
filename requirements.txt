@@ -5,3 +5,4 @@ recipe-scrapers
 rapidfuzz
 openpyxl
 gunicorn
+setuptools
