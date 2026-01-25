@@ -1017,19 +1017,21 @@ def update(recipe_id):
         })
 
     # Calculate CO2 per serving and rating
+    # Convert to Python float (pandas returns numpy types which PostgreSQL can't handle)
+    total_co2 = float(total_co2)
     co2_per_serving = round(total_co2 / servings, 3) if servings > 0 else 0
     rating = calculate_rating(co2_per_serving)
 
     # Nutrition per serving
     nutrition = {
-        "kcal": round(total_kcal / servings, 0) if servings > 0 else 0,
-        "fat": round(total_fat / servings, 1) if servings > 0 else 0,
-        "carbs": round(total_carbs / servings, 1) if servings > 0 else 0,
-        "protein": round(total_protein / servings, 1) if servings > 0 else 0
+        "kcal": float(round(total_kcal / servings, 0)) if servings > 0 else 0,
+        "fat": float(round(total_fat / servings, 1)) if servings > 0 else 0,
+        "carbs": float(round(total_carbs / servings, 1)) if servings > 0 else 0,
+        "protein": float(round(total_protein / servings, 1)) if servings > 0 else 0
     }
 
     # Update in database
-    update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
+    update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, float(total_co2), servings, nutrition, tags, source, notes, original_ingredients, rating)
 
     return f"""
     {MATERIAL_CSS}
