@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Review Ingredients - {{ recipe_name }} - Mealprint{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto pt-10">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <a href="/" class="text-slate-400 hover:text-slate-600 text-sm font-medium transition mb-2 inline-block">← Back</a>
+        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Review Ingredients</h1>
+        <p class="text-slate-500 mt-2">{{ recipe_name }} · {{ servings }} servings</p>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" action="/calculate" id="ingredients-form">
+        <input type="hidden" name="recipe_name" value="{{ recipe_name }}">
+        <input type="hidden" name="servings" value="{{ servings }}">
+        <input type="hidden" name="source" value="{{ source }}">
+        <input type="hidden" name="notes" value="{{ notes }}">
+        <input type="hidden" name="original_ingredients" value="{{ original_ingredients }}">
+
+        <!-- Ingredients Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-semibold text-slate-900 tracking-tight">Match Ingredients</h2>
+                <button type="button" onclick="addIngredientRow()" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium transition">
+                    + Add ingredient
+                </button>
+            </div>
+
+            <div class="space-y-4" id="ingredients-list">
+                {% for item in ingredients %}
+                <div class="ingredient-row flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-2xl">
+                    <!-- Original text -->
+                    <div class="md:w-1/3">
+                        <p class="text-xs text-slate-400 mb-1">Original</p>
+                        <p class="text-sm text-slate-600">{{ item.original_line }}</p>
+                    </div>
+
+                    <!-- Amount & Unit -->
+                    <div class="flex gap-2 md:w-1/6">
+                        <input type="number" name="amounts" value="{{ item.amount }}" step="any" required
+                            class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+                        <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                            {% for u in units %}
+                            <option value="{{ u }}" {% if u == item.unit %}selected{% endif %}>{{ u }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="hidden md:block text-slate-300">→</div>
+
+                    <!-- Match dropdown -->
+                    <div class="flex-1">
+                        {% if item.candidates %}
+                        <select name="selected_matches" required
+                            class="w-full px-3 py-2 rounded-xl border {% if item.confident %}border-slate-200{% else %}border-amber-300 bg-amber-50{% endif %} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                            {% for cand in item.candidates %}
+                            <option value="{{ cand }}" {% if loop.first and item.confident %}selected{% endif %}>{{ cand }}</option>
+                            {% endfor %}
+                        </select>
+                        {% else %}
+                        <input type="text" name="selected_matches" list="all-ingredients" required placeholder="Search ingredient..."
+                            class="w-full px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+                        {% endif %}
+                    </div>
+
+                    <!-- Remove button -->
+                    <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 transition p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl text-sm font-medium transition shadow-sm">
+            Calculate Footprint
+        </button>
+    </form>
+
+    <!-- Datalist for all ingredients -->
+    <datalist id="all-ingredients">
+        {% for name in all_ingredients %}
+        <option value="{{ name }}">
+        {% endfor %}
+    </datalist>
+
+</div>
+
+<script>
+const availableUnits = {{ units | tojson }};
+const allIngredients = {{ all_ingredients | tojson }};
+let rowCounter = 1000;
+
+function addIngredientRow() {
+    rowCounter++;
+    const list = document.getElementById('ingredients-list');
+
+    const unitOptions = availableUnits.map(u => `<option value="${u}">${u}</option>`).join('');
+
+    const row = document.createElement('div');
+    row.className = 'ingredient-row flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-2xl';
+    row.innerHTML = `
+        <div class="md:w-1/3">
+            <p class="text-xs text-slate-400 mb-1">New ingredient</p>
+            <p class="text-sm text-slate-400 italic">Added manually</p>
+        </div>
+        <div class="flex gap-2 md:w-1/6">
+            <input type="number" name="amounts" value="100" step="any" required
+                class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+            <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                ${unitOptions}
+            </select>
+        </div>
+        <div class="hidden md:block text-slate-300">→</div>
+        <div class="flex-1">
+            <input type="text" name="selected_matches" list="all-ingredients" required placeholder="Search ingredient..."
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+        </div>
+        <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 transition p-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+
+    list.appendChild(row);
+}
+</script>
+{% endblock %}

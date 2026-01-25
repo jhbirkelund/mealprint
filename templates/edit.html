@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Edit - {{ recipe.name }} - Mealprint{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto pt-10">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <a href="/recipe/{{ recipe.id }}" class="text-slate-400 hover:text-slate-600 text-sm font-medium transition mb-2 inline-block">← Cancel</a>
+        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Edit Recipe</h1>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" action="/update/{{ recipe.id }}" id="edit-form">
+        <!-- Basic Info Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-6">Basic Info</h2>
+            <div class="space-y-6">
+                <!-- Recipe Name -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-900 mb-2">Recipe Name</label>
+                    <input type="text" name="recipe_name" value="{{ recipe.name }}" required
+                        class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700">
+                </div>
+
+                <!-- Servings -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-900 mb-2">Servings</label>
+                    <input type="number" name="servings" value="{{ recipe.servings }}" step="0.1" required
+                        class="w-32 px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700">
+                </div>
+            </div>
+        </div>
+
+        <!-- Ingredients Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-lg font-semibold text-slate-900 tracking-tight">Ingredients</h2>
+                <button type="button" onclick="addIngredientRow()" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium transition">
+                    + Add ingredient
+                </button>
+            </div>
+
+            <div class="space-y-4" id="ingredients-list">
+                {% for ing in recipe.ingredients %}
+                <div class="ingredient-row flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-2xl">
+                    <!-- Amount & Unit -->
+                    <div class="flex gap-2">
+                        <input type="number" name="amounts" value="{{ ing.amount }}" step="any" required
+                            class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+                        <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                            {% for u in units %}
+                            <option value="{{ u }}" {% if u == ing.unit %}selected{% endif %}>{{ u }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Arrow -->
+                    <div class="hidden md:block text-slate-300">→</div>
+
+                    <!-- Ingredient input -->
+                    <div class="flex-1">
+                        <input type="text" name="selected_matches" list="all-ingredients" value="{{ ing.item }}" required
+                            class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+                    </div>
+
+                    <!-- Remove button -->
+                    <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 transition p-1">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Details Card -->
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-6">Details</h2>
+            <div class="space-y-6">
+                <!-- Source -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-900 mb-2">Source</label>
+                    <input type="text" name="source" value="{{ recipe.source }}"
+                        class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400"
+                        placeholder="URL, cookbook, or 'Family recipe'">
+                </div>
+
+                <!-- Tags -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-900 mb-2">Tags</label>
+                    <input type="text" name="tags" value="{{ recipe.tags | join(', ') }}"
+                        class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400"
+                        placeholder="dinner, quick, vegetarian (comma-separated)">
+                </div>
+
+                <!-- Original Ingredients -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-900 mb-2">Original Ingredients</label>
+                    <textarea name="original_ingredients" rows="4"
+                        class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400 resize-none">{{ recipe.original_ingredients }}</textarea>
+                </div>
+
+                <!-- Notes -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-900 mb-2">Instructions / Notes</label>
+                    <textarea name="notes" rows="6"
+                        class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400 resize-none">{{ recipe.notes }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl text-sm font-medium transition shadow-sm">
+            Save Changes
+        </button>
+    </form>
+
+    <!-- Datalist for all ingredients -->
+    <datalist id="all-ingredients">
+        {% for name in all_ingredients %}
+        <option value="{{ name }}">
+        {% endfor %}
+    </datalist>
+
+</div>
+
+<script>
+const availableUnits = {{ units | tojson }};
+let rowCounter = 1000;
+
+function addIngredientRow() {
+    rowCounter++;
+    const list = document.getElementById('ingredients-list');
+
+    const unitOptions = availableUnits.map(u => `<option value="${u}">${u}</option>`).join('');
+
+    const row = document.createElement('div');
+    row.className = 'ingredient-row flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-2xl';
+    row.innerHTML = `
+        <div class="flex gap-2">
+            <input type="number" name="amounts" value="100" step="any" required
+                class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+            <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                ${unitOptions}
+            </select>
+        </div>
+        <div class="hidden md:block text-slate-300">→</div>
+        <div class="flex-1">
+            <input type="text" name="selected_matches" list="all-ingredients" required placeholder="Search ingredient..."
+                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+        </div>
+        <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 transition p-1">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+
+    list.appendChild(row);
+}
+</script>
+{% endblock %}

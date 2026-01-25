@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}About Carbon Ratings - Mealprint{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto pt-10">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <a href="javascript:history.back()" class="text-slate-400 hover:text-slate-600 text-sm font-medium transition mb-2 inline-block">&larr; Go back</a>
+        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Understanding Carbon Footprints</h1>
+        <p class="text-slate-500 mt-2">Benchmarks and the context problem</p>
+    </div>
+
+    <!-- Rating Summary Card -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">How Mealprint Rates Your Meals</h2>
+        <p class="text-slate-600 mb-6">Mealprint uses traffic-light indicators based on CO<sub>2</sub> per serving:</p>
+
+        <div class="space-y-3">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium bg-emerald-100 text-emerald-900">
+                    Very Low Footprint
+                </span>
+                <span class="text-slate-600">Less than 0.4 kg CO<sub>2</sub>e</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium bg-emerald-100 text-emerald-900">
+                    Low Footprint
+                </span>
+                <span class="text-slate-600">0.4 - 1.0 kg CO<sub>2</sub>e</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium bg-amber-100 text-amber-900">
+                    Medium Footprint
+                </span>
+                <span class="text-slate-600">1.0 - 1.8 kg CO<sub>2</sub>e</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium bg-rose-100 text-rose-900">
+                    High Footprint
+                </span>
+                <span class="text-slate-600">1.8 - 2.5 kg CO<sub>2</sub>e</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium bg-rose-100 text-rose-900">
+                    Very High Footprint
+                </span>
+                <span class="text-slate-600">More than 2.5 kg CO<sub>2</sub>e</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Introduction -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">Introduction</h2>
+        <div class="space-y-4 text-slate-700 leading-relaxed">
+            <p>The global food system accounts for between 25-30% of human-caused greenhouse gas emissions.<sup class="text-emerald-600">1</sup> As individuals seek to reduce their environmental impact, understanding the carbon footprint of individual meals has become increasingly important.</p>
+            <p>However, meal-level carbon footprints vary dramatically: a veggie burrito might generate 355g CO<sub>2</sub>-equivalent (CO<sub>2</sub>e), while a beef burrito with cheese and sour cream produces 3,493g CO<sub>2</sub>e - nearly ten times higher.<sup class="text-emerald-600">2</sup></p>
+            <p>This variation creates a challenge: without clear benchmarks, consumers cannot determine whether a given meal's footprint is high, low, or somewhere in between. A number like "1,200g CO<sub>2</sub>e" is meaningless without context.</p>
+        </div>
+    </div>
+
+    <!-- Benchmarks -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">Benchmarks: What's a Sustainable Meal?</h2>
+
+        <h3 class="font-semibold text-slate-900 mt-6 mb-3">Daily and Annual Targets</h3>
+        <div class="space-y-4 text-slate-700 leading-relaxed">
+            <p>Research has established several thresholds for sustainable dietary carbon footprints. The Harvard Foodprint Calculator identifies <strong class="text-slate-900">680kg CO<sub>2</sub>e per year</strong> as the upper limit of a sustainable diet.<sup class="text-emerald-600">3</sup> This translates to approximately 1,863g CO<sub>2</sub>e per day, or roughly <strong class="text-slate-900">620g per meal</strong> assuming three meals daily.</p>
+            <p>The Paris Climate Accord established a more lenient target: approximately <strong class="text-slate-900">921g per meal</strong>.<sup class="text-emerald-600">2</sup> While higher than the sustainable threshold, this represents a significant reduction from current dietary patterns.</p>
+        </div>
+
+        <h3 class="font-semibold text-slate-900 mt-6 mb-3">Actual Diet Footprints</h3>
+        <p class="text-slate-700 mb-3">Current dietary patterns show substantial variation:</p>
+        <ul class="space-y-2 text-slate-700">
+            <li class="flex items-start gap-2">
+                <span class="text-rose-500 mt-1">•</span>
+                <span><strong class="text-slate-900">Meat-lover diet:</strong> ~3,300kg CO<sub>2</sub>e annually (4x the sustainable threshold)<sup class="text-emerald-600">4</sup></span>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-amber-500 mt-1">•</span>
+                <span><strong class="text-slate-900">Vegetarian diet:</strong> ~1,650kg per year</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="text-emerald-500 mt-1">•</span>
+                <span><strong class="text-slate-900">Vegan diet:</strong> ~1,500kg annually</span>
+            </li>
+        </ul>
+
+        <h3 class="font-semibold text-slate-900 mt-6 mb-3">Concrete Meal Examples</h3>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200">
+                        <th class="text-left py-3 font-semibold text-slate-900">Meal</th>
+                        <th class="text-right py-3 font-semibold text-slate-900">CO<sub>2</sub>e (grams)</th>
+                    </tr>
+                </thead>
+                <tbody class="text-slate-700">
+                    <tr class="border-b border-slate-100">
+                        <td class="py-3">Beef burrito (beef, cheese, sour cream, rice)</td>
+                        <td class="py-3 text-right font-semibold text-rose-600">3,493</td>
+                    </tr>
+                    <tr class="border-b border-slate-100">
+                        <td class="py-3">Impossible burrito (plant-based meat, guacamole, rice)</td>
+                        <td class="py-3 text-right font-semibold text-amber-600">581</td>
+                    </tr>
+                    <tr>
+                        <td class="py-3">Veggie burrito (beans, guacamole, rice)</td>
+                        <td class="py-3 text-right font-semibold text-emerald-600">355</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-slate-500 text-sm mt-2">Source: UCLA carbon footprint research<sup class="text-emerald-600">2</sup></p>
+    </div>
+
+    <!-- Key Drivers -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">Key Drivers</h2>
+        <p class="text-slate-700 leading-relaxed mb-4">Ingredient choice dominates meal carbon footprints. Beef production generates approximately <strong class="text-slate-900">60kg CO<sub>2</sub>e per kilogram</strong>, while peas produce just <strong class="text-slate-900">1kg CO<sub>2</sub>e per kilogram</strong> - a 60-fold difference.<sup class="text-emerald-600">6</sup></p>
+
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mt-4">
+            <p class="text-emerald-900"><strong>Key insight:</strong> Transportation accounts for less than 5% of most foods' carbon footprints. Ingredient selection matters far more than food miles.<sup>6</sup></p>
+        </div>
+    </div>
+
+    <!-- Future Ratings -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">Future: Category-Specific Ratings</h2>
+        <div class="space-y-4 text-slate-700 leading-relaxed">
+            <p>Absolute thresholds have a limitation: they ignore meal context. A 400g dessert might be rated "low" even though it's high for a dessert, while a 1,200g vegetable stir-fry dinner might be rated "medium" despite being low-carbon for a main meal.</p>
+            <p>Once Mealprint has sufficient recipes in each category, ratings will transition to <strong class="text-slate-900">percentile-based comparisons within meal types</strong> - so you'll see how your dessert compares to other desserts, not to all meals.</p>
+        </div>
+    </div>
+
+    <!-- References -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">References</h2>
+        <ol class="space-y-2 text-slate-600 text-sm list-decimal list-inside">
+            <li>University of Michigan Center for Sustainable Systems. (2025). Carbon Footprint Factsheet.</li>
+            <li>UCLA Dining. Fight Climate Change with Food. <a href="https://dining.ucla.edu/carbonfootprint/" target="_blank" class="text-emerald-600 hover:text-emerald-700 break-all">dining.ucla.edu/carbonfootprint</a></li>
+            <li>Harvard Foodprint Calculator. <a href="https://harvard-foodprint-calculator.github.io/" target="_blank" class="text-emerald-600 hover:text-emerald-700 break-all">harvard-foodprint-calculator.github.io</a></li>
+            <li>Green Eatz. (2022). How to Lower Your Food's Carbon Footprint.</li>
+            <li>Blackstone, N. T., et al. (2021). The carbon footprint of dietary guidelines around the world. <em>Nutrition Journal</em>, 20(1), 15.</li>
+            <li>Ritchie, H. (2020). You want to reduce the carbon footprint of your food? Focus on what you eat, not whether your food is local. <a href="https://ourworldindata.org/food-choice-vs-eating-local" target="_blank" class="text-emerald-600 hover:text-emerald-700 break-all">Our World in Data</a></li>
+        </ol>
+    </div>
+
+    <!-- Back link -->
+    <div class="text-center pb-10">
+        <a href="javascript:history.back()" class="text-slate-500 hover:text-emerald-600 text-sm font-medium transition">&larr; Go back</a>
+    </div>
+
+</div>
+{% endblock %}

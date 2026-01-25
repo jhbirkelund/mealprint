@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, redirect
 import pandas as pd
 import html
 import json
@@ -17,159 +17,6 @@ try:
     print("Database initialized successfully")
 except Exception as e:
     print(f"Database initialization error: {e}")
-
-# Shared Material Design CSS
-MATERIAL_CSS = """
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap');
-    @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
-
-    * { box-sizing: border-box; }
-
-    body {
-        font-family: 'Roboto', sans-serif;
-        background: #f5f5f5;
-        margin: 0;
-        padding: 24px;
-        padding-top: 72px;
-        color: #212121;
-    }
-
-    .nav {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background: #1976D2;
-        padding: 0 24px;
-        display: flex;
-        align-items: center;
-        height: 56px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        z-index: 1000;
-    }
-
-    .nav-brand {
-        color: white;
-        font-size: 20px;
-        font-weight: 500;
-        text-decoration: none;
-        margin-right: 32px;
-    }
-
-    .nav-brand:hover { text-decoration: none; }
-
-    .nav-links {
-        display: flex;
-        gap: 8px;
-    }
-
-    .nav-link {
-        color: rgba(255,255,255,0.85);
-        text-decoration: none;
-        padding: 8px 16px;
-        border-radius: 4px;
-        font-size: 14px;
-        font-weight: 500;
-        transition: background 0.2s;
-    }
-
-    .nav-link:hover {
-        background: rgba(255,255,255,0.1);
-        text-decoration: none;
-        color: white;
-    }
-
-    @media (max-width: 500px) {
-        .nav { padding: 0 12px; }
-        .nav-brand { font-size: 18px; margin-right: 16px; }
-        .nav-link { padding: 8px 10px; font-size: 13px; }
-    }
-
-    .card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        padding: 24px;
-        max-width: 800px;
-        margin: 0 auto 24px auto;
-    }
-
-    h1, h2 { font-weight: 400; color: #1976D2; margin-top: 0; }
-
-    input[type="text"], input[type="number"], input[type="url"], textarea, select {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        font-size: 16px;
-        font-family: 'Roboto', sans-serif;
-        margin-top: 8px;
-        transition: border-color 0.2s;
-    }
-
-    input:focus, textarea:focus, select:focus {
-        outline: none;
-        border-color: #1976D2;
-    }
-
-    label { font-weight: 500; color: #555; }
-
-    .btn {
-        background: #1976D2;
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 4px;
-        font-size: 14px;
-        font-weight: 500;
-        text-transform: uppercase;
-        cursor: pointer;
-        transition: background 0.2s, box-shadow 0.2s;
-    }
-
-    .btn:hover {
-        background: #1565C0;
-        box-shadow: 0 2px 8px rgba(25,118,210,0.3);
-    }
-
-    .btn-success { background: #43A047; }
-    .btn-success:hover { background: #388E3C; }
-
-    table { width: 100%; border-collapse: collapse; }
-    th { text-align: left; padding: 12px; background: #f5f5f5; border-bottom: 2px solid #ddd; font-weight: 500; }
-    td { padding: 12px; border-bottom: 1px solid #eee; }
-
-    a { color: #1976D2; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-
-    .divider { border: none; border-top: 1px solid #eee; margin: 24px 0; }
-
-    .chip {
-        display: inline-block;
-        background: #e3f2fd;
-        color: #1976D2;
-        padding: 6px 12px;
-        border-radius: 16px;
-        font-size: 13px;
-        font-weight: 500;
-        margin: 4px 4px 4px 0;
-    }
-
-    .chips { margin: 8px 0 16px 0; }
-</style>
-"""
-
-NAV_BAR = """
-<nav class="nav">
-    <a href="/" class="nav-brand">Mealprint</a>
-    <div class="nav-links">
-        <a href="/" class="nav-link">New Recipe</a>
-        <a href="/history" class="nav-link">History</a>
-        <a href="/about-rating" class="nav-link">About</a>
-    </div>
-</nav>
-"""
 
 # Load the DB once at startup
 df = pd.read_excel('climate_data.xlsx', sheet_name='DK')
@@ -247,46 +94,7 @@ def get_processed_ingredients(raw_text_block):
 
 @app.route('/')
 def home():
-    return render_home()
-
-def render_home(recipe_name="", servings="1", ingredients="", source="", notes="", original_ingredients=""):
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card">
-        <h1>Mealprint</h1>
-
-        <form method="POST" action="/scrape">
-            <label>Import from URL</label>
-            <input type="url" name="recipe_url" placeholder="https://..." required>
-            <br><br>
-            <button type="submit" class="btn">Scrape Recipe</button>
-        </form>
-
-        <hr class="divider">
-
-        <form method="POST" action="/summary">
-            <label>Recipe Name</label>
-            <input type="text" name="recipe_name" value="{html.escape(recipe_name)}" required>
-            <br><br>
-            <label>Servings</label>
-            <input type="number" name="servings" value="{html.escape(str(servings))}" step="0.1" required>
-            <br><br>
-            <label>Ingredients (one per line)</label>
-            <textarea name="ingredients" rows="10" placeholder="200g beef&#10;1 onion">{html.escape(ingredients)}</textarea>
-            <br><br>
-            <label>Source (optional)</label>
-            <input type="text" name="source" value="{html.escape(source)}" placeholder="URL, cookbook name, or 'Family recipe'">
-            <input type="hidden" name="notes" value="{html.escape(notes)}">
-            <input type="hidden" name="original_ingredients" value="{html.escape(original_ingredients)}">
-            <br><br>
-            <button type="submit" class="btn btn-success">Process Ingredients</button>
-        </form>
-
-        <hr class="divider">
-        <a href="/history">View saved recipes →</a>
-    </div>
-    """
+    return render_template('home.html')
 
 @app.route('/scrape', methods=['POST'])
 def scrape():
@@ -304,22 +112,20 @@ def scrape():
         original_ingredients = "\n".join(ingredients_list)
         instructions = scraper.instructions() or ""
 
-        return render_home(recipe_name, servings, ingredients, source=url, notes=instructions, original_ingredients=original_ingredients)
+        return render_template('home.html',
+            recipe_name=recipe_name,
+            servings=servings,
+            ingredients=ingredients,
+            source=url,
+            notes=instructions,
+            original_ingredients=original_ingredients
+        )
     except Exception as e:
-        return f"""
-        {MATERIAL_CSS}
-        {NAV_BAR}
-        <div class="card">
-            <h1>Scraping Failed</h1>
-            <p>Error: {html.escape(str(e))}</p>
-            <hr class="divider">
-            <a href="/">← Go back</a>
-        </div>
-        """
+        return render_template('home.html', error=str(e))
 
 @app.route('/summary', methods=['POST'])
 def summary():
-    name = request.form.get('recipe_name')
+    recipe_name = request.form.get('recipe_name')
     servings = request.form.get('servings')
     raw_ingredients = request.form.get('ingredients')
     source = request.form.get('source', '')
@@ -332,140 +138,26 @@ def summary():
 
     # Run the processing logic
     ingredients_with_matches = get_processed_ingredients(raw_ingredients)
-    
-    # Build datalist options once (all ingredients from DB)
-    all_ingredients = sorted(df['Name'].unique().tolist())
-    datalist_options = "".join([f'<option value="{name}">' for name in all_ingredients])
 
-    # Build unit dropdown options
+    # Standardize units in the processed ingredients
+    for item in ingredients_with_matches:
+        raw_unit = item['unit'].lower().strip() if item['unit'] else ""
+        item['unit'] = UNIT_MAP.get(raw_unit, raw_unit)
+
+    # Get all ingredients and units for the template
+    all_ingredients = sorted(df['Name'].unique().tolist())
     available_units = list(CONVERSIONS['units'].keys())
 
-    # Create the HTML rows (the "Correction UI")
-    rows_html = ""
-    for idx, item in enumerate(ingredients_with_matches):
-        # Standardize units using UNIT_MAP
-        raw_unit = item['unit'].lower().strip() if item['unit'] else""
-        clean_unit = UNIT_MAP.get(raw_unit, raw_unit)
-
-        # Use first match as default value, but only if confident
-        has_matches = True if item['candidates'] else False
-        is_confident = item.get('confident', False)
-        default_value = item['candidates'][0] if (has_matches and is_confident) else ""
-
-        # Style: red border if no confident match
-        border_style = "" if is_confident else "border: 2px solid #e53935;"
-        placeholder = "Type to search..." if is_confident else "No match - type to search"
-
-        # Create dropdown with candidate matches
-        datalist_id = f"ingredients_{idx}"
-        input_id = f"input_{idx}"
-
-        # Build select dropdown with candidates
-        if item['candidates']:
-            options_html = "".join([
-                f'<option value="{cand}" {"selected" if cand == default_value else ""}>{cand}</option>'
-                for cand in item['candidates']
-            ])
-            search_input = f'''<select name="selected_matches" id="{input_id}" style="width: 300px; {border_style}" required>
-                {options_html}
-            </select>
-            <br><input type="text" list="{datalist_id}" placeholder="Or search all..." style="width: 300px; margin-top: 4px; font-size: 12px;" onchange="document.getElementById('{input_id}').insertAdjacentHTML('beforeend', '<option value=&quot;'+this.value+'&quot; selected>'+this.value+'</option>'); this.value='';">
-            <datalist id="{datalist_id}">{datalist_options}</datalist>'''
-        else:
-            search_input = f'''<input type="text" id="{input_id}" name="selected_matches" list="{datalist_id}" value="" placeholder="{placeholder}" style="width: 300px; {border_style}" required>
-            <datalist id="{datalist_id}">{datalist_options}</datalist>'''
-
-        # Build unit dropdown with current unit selected
-        unit_options = "".join([
-            f'<option value="{u}" {"selected" if u == clean_unit else ""}>{u}</option>'
-            for u in available_units
-        ])
-
-        rows_html += f"""
-        <tr style="border-bottom: 1px solid #ddd;">
-            <td style="padding: 15px; width: 35%">
-                <div style="color: #888; font-size: 12px; margin-bottom: 8px;">{item['original_line']}</div>
-                <input type="number" name="amounts" value="{item['amount']}" step="any" style="width: 80px; padding: 8px; margin-right: 8px;" required>
-                <select name="units" style="width: 80px; padding: 8px;">
-                    {unit_options}
-                </select>
-            </td>
-            <td style="padding: 15px; width: 5%; text-align: center;">&rarr;</td>
-            <td style="padding: 15px; width: 55%;">{search_input}</td>
-            <td style="padding: 15px; width: 5%;">
-                <button type="button" onclick="this.closest('tr').remove();" style="color: red; border: none; background: none; cursor: pointer; font-size: 20px;">&times;</button>
-            </td>
-        </tr>
-        """
-
-    # Build unit options for JavaScript
-    unit_options_js = json.dumps(available_units)
-    # Build ingredient options for JavaScript
-    ingredients_js = json.dumps(all_ingredients)
-
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card">
-        <h2>Review & Correct</h2>
-        <p><strong>{name}</strong> · {servings} servings</p>
-        <form method="POST" action="/calculate">
-            <input type="hidden" name="recipe_name" value="{name}">
-            <input type="hidden" name="servings" value="{servings}">
-            <input type="hidden" name="source" value="{html.escape(source)}">
-            <input type="hidden" name="notes" value="{html.escape(notes)}">
-            <input type="hidden" name="original_ingredients" value="{html.escape(original_ingredients)}">
-            <table id="ingredients-table">
-                {rows_html}
-            </table>
-            <button type="button" class="btn" onclick="addIngredientRow()" style="margin-top: 12px;">+ Add Ingredient</button>
-            <br><br>
-            <button type="submit" class="btn btn-success">Calculate Footprint</button>
-        </form>
-        <hr class="divider">
-        <a href="/">← Start over</a>
-    </div>
-
-    <script>
-    const availableUnits = {unit_options_js};
-    const allIngredients = {ingredients_js};
-    let rowCounter = 1000; // Start high to avoid ID conflicts
-
-    function addIngredientRow() {{
-        rowCounter++;
-        const table = document.getElementById('ingredients-table');
-
-        // Build unit options
-        const unitOptions = availableUnits.map(u => `<option value="${{u}}">${{u}}</option>`).join('');
-
-        // Build ingredient datalist
-        const datalistId = `ingredients_${{rowCounter}}`;
-        const datalistOptions = allIngredients.map(name => `<option value="${{name}}">`).join('');
-
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #ddd';
-        row.innerHTML = `
-            <td style="padding: 15px; width: 35%">
-                <div style="color: #888; font-size: 12px; margin-bottom: 8px;">(new ingredient)</div>
-                <input type="number" name="amounts" value="100" step="any" style="width: 80px; padding: 8px; margin-right: 8px;" required>
-                <select name="units" style="width: 80px; padding: 8px;">
-                    ${{unitOptions}}
-                </select>
-            </td>
-            <td style="padding: 15px; width: 5%; text-align: center;">&rarr;</td>
-            <td style="padding: 15px; width: 55%;">
-                <input type="text" name="selected_matches" list="${{datalistId}}" placeholder="Search ingredient..." style="width: 300px;" required>
-                <datalist id="${{datalistId}}">${{datalistOptions}}</datalist>
-            </td>
-            <td style="padding: 15px; width: 5%;">
-                <button type="button" onclick="this.closest('tr').remove();" style="color: red; border: none; background: none; cursor: pointer; font-size: 20px;">&times;</button>
-            </td>
-        `;
-
-        table.appendChild(row);
-    }}
-    </script>
-    """
+    return render_template('summary.html',
+        recipe_name=recipe_name,
+        servings=servings,
+        source=source,
+        notes=notes,
+        original_ingredients=original_ingredients,
+        ingredients=ingredients_with_matches,
+        all_ingredients=all_ingredients,
+        units=available_units
+    )
 
 @app.route('/calculate', methods=['POST'])
 def calculate():
@@ -483,7 +175,6 @@ def calculate():
     total_fat = 0
     total_carbs = 0
     total_protein = 0
-    results_breakdown = []
     detailed_ingredients = []
 
     # Loop through and calculate each item
@@ -512,97 +203,43 @@ def calculate():
         total_carbs += (grams / 100) * carbs
         total_protein += (grams / 100) * protein
 
-        results_breakdown.append(f"<tr><td>{match_name}</td><td>{grams:.0f} g</td><td>{item_co2:.2f} kg</td></tr>")
-
-        # Build the dictionary for this specific ingredient
         detailed_ingredients.append({
             "item": match_name,
             "amount": amt,
             "unit": unit,
-            "match": match_name,
             "grams": round(grams, 1),
             "co2": round(item_co2, 3)
         })
 
     # Get servings from the form and divide totals by servings
-    servings_raw = request.form.get('servings', 1)
-    servings = float(servings_raw)
-    footprint_per_serving = total_co2 / servings if servings > 0 else total_co2
-    kcal_per_serving = total_kcal / servings if servings > 0 else total_kcal
-    fat_per_serving = total_fat / servings if servings > 0 else total_fat
-    carbs_per_serving = total_carbs / servings if servings > 0 else total_carbs
-    protein_per_serving = total_protein / servings if servings > 0 else total_protein
+    servings = float(request.form.get('servings', 1))
+    co2_per_serving = total_co2 / servings if servings > 0 else total_co2
 
-    # Nutrition data for saving
+    # Nutrition data for saving (per serving)
     nutrition = {
-        "kcal": round(kcal_per_serving, 0),
-        "fat": round(fat_per_serving, 1),
-        "carbs": round(carbs_per_serving, 1),
-        "protein": round(protein_per_serving, 1)
+        "kcal": round(total_kcal / servings, 0) if servings > 0 else 0,
+        "fat": round(total_fat / servings, 1) if servings > 0 else 0,
+        "carbs": round(total_carbs / servings, 1) if servings > 0 else 0,
+        "protein": round(total_protein / servings, 1) if servings > 0 else 0
     }
 
-    ingredients_json = html.escape(json.dumps(detailed_ingredients))
-    nutrition_json = html.escape(json.dumps(nutrition))
+    # Calculate rating
+    rating = calculate_rating(co2_per_serving)
 
-    # Calculate rating for display
-    rating = calculate_rating(footprint_per_serving)
-    rating_badge = f'''<span style="display: inline-block; background: {rating['color']}; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 500; font-size: 14px;">{rating['emoji']} {rating['label']} Footprint</span>'''
-
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card">
-        <h1>{recipe_name}</h1>
-        <div style="margin: 16px 0;">
-            {rating_badge}
-            <span style="color: #666; font-size: 13px; margin-left: 12px;" title="Rating based on CO2 per serving. Compares to sustainable meal targets.">({footprint_per_serving:.2f} kg CO2 per serving) <a href="/about-rating" style="text-decoration: none; cursor: help; border-bottom: 1px dotted #999;">ⓘ</a></span>
-        </div>
-        <p><strong>Total footprint:</strong> {total_co2:.2f} kg CO2e · <strong>Servings:</strong> {servings:.0f}</p>
-
-        <table>
-            <tr>
-                <th>Ingredient</th>
-                <th>Weight</th>
-                <th>CO2</th>
-            </tr>
-            {"".join(results_breakdown)}
-        </table>
-
-        <h2 style="margin-top: 32px;">Per Serving</h2>
-        <table>
-            <tr><td>CO2</td><td>{footprint_per_serving:.2f} kg</td></tr>
-            <tr><td>Calories</td><td>{kcal_per_serving:.0f} kcal</td></tr>
-            <tr><td>Fat</td><td>{fat_per_serving:.1f} g</td></tr>
-            <tr><td>Carbs</td><td>{carbs_per_serving:.1f} g</td></tr>
-            <tr><td>Protein</td><td>{protein_per_serving:.1f} g</td></tr>
-        </table>
-
-        <form method="POST" action="/save/">
-            <input type="hidden" name="recipe_name" value="{recipe_name}">
-            <input type="hidden" name="servings" value="{servings}">
-            <input type="hidden" name="total_co2" value="{total_co2}">
-            <input type="hidden" name="co2_per_serving" value="{footprint_per_serving}">
-            <input type="hidden" name="nutrition" value="{nutrition_json}">
-            <input type="hidden" name="detailed_ingredients" value="{ingredients_json}">
-            <input type="hidden" name="original_ingredients" value="{html.escape(original_ingredients)}">
-            {"".join([f'<input type="hidden" name="selected_matches" value="{m}">' for m in selected_matches])}
-
-            <label>Source</label>
-            <input type="text" name="source" value="{html.escape(source)}" placeholder="URL, cookbook, or 'Family recipe'">
-            <br><br>
-            <label>Tags (comma-separated)</label>
-            <input type="text" name="tags" placeholder="dinner, quick, comfort-food">
-            <br><br>
-            <label>Notes / Instructions</label>
-            <textarea name="notes" rows="8" style="font-size: 14px;">{html.escape(notes)}</textarea>
-            <br><br>
-            <button type="submit" class="btn">Save Recipe</button>
-        </form>
-
-        <hr class="divider">
-        <a href="/">← Create another meal</a>
-    </div>
-    """
+    return render_template('calculate.html',
+        recipe_name=recipe_name,
+        servings=servings,
+        total_co2=total_co2,
+        co2_per_serving=co2_per_serving,
+        rating=rating,
+        nutrition=nutrition,
+        ingredients=detailed_ingredients,
+        source=source,
+        notes=notes,
+        original_ingredients=original_ingredients,
+        ingredients_json=html.escape(json.dumps(detailed_ingredients)),
+        nutrition_json=html.escape(json.dumps(nutrition))
+    )
 
 @app.route('/save/', methods=['POST'])
 def save():
@@ -630,20 +267,10 @@ def save():
     rating = calculate_rating(co2_per_serving)
 
     # Save to database
-    save_recipe_to_db(recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
+    recipe_id = save_recipe_to_db(recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
 
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card" style="text-align: center;">
-        <h1>Saved!</h1>
-        <p><strong>{recipe_name}</strong> has been added to your recipes.</p>
-        <br>
-        <a href="/" class="btn" style="display: inline-block; text-decoration: none;">Create Another Meal</a>
-        <br><br>
-        <a href="/history">View all recipes →</a>
-    </div>
-    """
+    # Redirect to the new recipe
+    return redirect(f'/recipe/{recipe_id}')
 
 # Show list of all recipes in DB:
 @app.route('/history')
@@ -651,48 +278,12 @@ def history():
     # Load recipes from database
     recipes = get_all_recipes()
 
-    if not recipes:
-        return f"""
-        {MATERIAL_CSS}
-        {NAV_BAR}
-        <div class="card">
-            <h1>No recipes yet</h1>
-            <p>You haven't saved any recipes.</p>
-            <br>
-            <a href="/" class="btn" style="display: inline-block; text-decoration: none;">Create Your First Recipe</a>
-        </div>
-        """
-
-    # Build table rows
-    table_rows = ""
+    # Calculate rating for any recipes missing it
     for r in recipes:
-        co2_per_serving = r.get('co2_per_serving', 0)
-        # Get or calculate rating
-        stored_rating = r.get('rating')
-        if stored_rating and stored_rating.get('label'):
-            rating = stored_rating
-        else:
-            rating = calculate_rating(co2_per_serving)
-        rating_badge = f'''<span style="display: inline-block; background: {rating['color']}; color: white; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500;">{rating['emoji']} {rating['label']}</span>'''
-        table_rows += f"<tr style='cursor: pointer;' onclick=\"window.location='/recipe/{r['id']}'\"><td>{r['name']}</td><td>{rating_badge}</td><td>{co2_per_serving:.2f} kg</td></tr>"
+        if not r.get('rating') or not r['rating'].get('label'):
+            r['rating'] = calculate_rating(r.get('co2_per_serving', 0))
 
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card">
-        <h1>All Recipes</h1>
-        <table>
-            <tr>
-                <th>Recipe</th>
-                <th>Rating</th>
-                <th>CO2 per serving</th>
-            </tr>
-            {table_rows}
-        </table>
-        <hr class="divider">
-        <a href="/">← Create another recipe</a>
-    </div>
-    """
+    return render_template('history.html', recipes=recipes)
 
 @app.route('/recipe/<recipe_id>')
 def recipe(recipe_id):
@@ -700,14 +291,7 @@ def recipe(recipe_id):
     r = get_recipe_by_id(recipe_id)
 
     if not r:
-        return f"""
-        {MATERIAL_CSS}
-        {NAV_BAR}
-        <div class="card">
-            <h1>Recipe not found</h1>
-            <a href="/history">← Back to all recipes</a>
-        </div>
-        """
+        return redirect('/history')
 
     # Calculate rating if not stored
     if not r.get('rating') or not r['rating'].get('label'):
@@ -721,143 +305,17 @@ def edit(recipe_id):
     r = get_recipe_by_id(recipe_id)
 
     if not r:
-        return f"""
-        {MATERIAL_CSS}
-        {NAV_BAR}
-        <div class="card">
-            <h1>Recipe not found</h1>
-            <a href="/history">← Back to all recipes</a>
-        </div>
-        """
+        return render_template('home.html', error="Recipe not found")
 
-    # Build datalist options (all ingredients from DB)
+    # Get all ingredients and units for the template
     all_ingredients = sorted(df['Name'].unique().tolist())
-    datalist_options = "".join([f'<option value="{name}">' for name in all_ingredients])
-
-    # Available units
     available_units = list(CONVERSIONS['units'].keys())
 
-    # Build ingredient rows from saved data
-    rows_html = ""
-    for idx, ing in enumerate(r.get('ingredients', [])):
-        item_name = ing.get('item', '')
-        amount = ing.get('amount', 0)
-        unit = ing.get('unit', 'g')
-
-        # Build unit dropdown
-        unit_options = "".join([
-            f'<option value="{u}" {"selected" if u == unit else ""}>{u}</option>'
-            for u in available_units
-        ])
-
-        datalist_id = f"ingredients_{idx}"
-
-        rows_html += f"""
-        <tr style="border-bottom: 1px solid #ddd;">
-            <td style="padding: 15px; width: 35%">
-                <input type="number" name="amounts" value="{amount}" step="any" style="width: 80px; padding: 8px; margin-right: 8px;" required>
-                <select name="units" style="width: 80px; padding: 8px;">
-                    {unit_options}
-                </select>
-            </td>
-            <td style="padding: 15px; width: 5%; text-align: center;">&rarr;</td>
-            <td style="padding: 15px; width: 55%;">
-                <input type="text" name="selected_matches" list="{datalist_id}" value="{item_name}" style="width: 300px;" required>
-                <datalist id="{datalist_id}">{datalist_options}</datalist>
-            </td>
-            <td style="padding: 15px; width: 5%;">
-                <button type="button" onclick="this.closest('tr').remove();" style="color: red; border: none; background: none; cursor: pointer; font-size: 20px;">&times;</button>
-            </td>
-        </tr>
-        """
-
-    # Current tags as comma-separated string
-    tags_str = ", ".join(r.get('tags', []))
-    source_str = r.get('source', '')
-    notes_str = r.get('notes', '')
-    original_ingredients_str = r.get('original_ingredients', '')
-
-    # Build unit options and ingredients for JavaScript
-    unit_options_js = json.dumps(available_units)
-    ingredients_js = json.dumps(all_ingredients)
-
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card">
-        <h2>Edit Recipe</h2>
-        <form method="POST" action="/update/{recipe_id}">
-            <label>Recipe Name</label>
-            <input type="text" name="recipe_name" value="{html.escape(r['name'])}" required>
-            <br><br>
-            <label>Servings</label>
-            <input type="number" name="servings" value="{r.get('servings', 1)}" step="0.1" required>
-            <br><br>
-
-            <label>Ingredients</label>
-            <table id="ingredients-table">
-                {rows_html}
-            </table>
-            <button type="button" class="btn" onclick="addIngredientRow()" style="margin-top: 12px;">+ Add Ingredient</button>
-            <br><br>
-
-            <label>Source</label>
-            <input type="text" name="source" value="{html.escape(source_str)}" placeholder="URL, cookbook, or 'Family recipe'">
-            <br><br>
-
-            <label>Tags (comma-separated)</label>
-            <input type="text" name="tags" value="{html.escape(tags_str)}" placeholder="dinner, quick, comfort-food">
-            <br><br>
-
-            <label>Original Ingredients</label>
-            <textarea name="original_ingredients" rows="6" style="font-size: 14px;">{html.escape(original_ingredients_str)}</textarea>
-            <br><br>
-
-            <label>Instructions</label>
-            <textarea name="notes" rows="8" style="font-size: 14px;">{html.escape(notes_str)}</textarea>
-            <br><br>
-
-            <button type="submit" class="btn btn-success">Save Changes</button>
-            <a href="/recipe/{recipe_id}" style="margin-left: 12px;">Cancel</a>
-        </form>
-    </div>
-
-    <script>
-    const availableUnits = {unit_options_js};
-    const allIngredients = {ingredients_js};
-    let rowCounter = 1000;
-
-    function addIngredientRow() {{
-        rowCounter++;
-        const table = document.getElementById('ingredients-table');
-
-        const unitOptions = availableUnits.map(u => `<option value="${{u}}">${{u}}</option>`).join('');
-        const datalistId = `ingredients_${{rowCounter}}`;
-        const datalistOptions = allIngredients.map(name => `<option value="${{name}}">`).join('');
-
-        const row = document.createElement('tr');
-        row.style.borderBottom = '1px solid #ddd';
-        row.innerHTML = `
-            <td style="padding: 15px; width: 35%">
-                <input type="number" name="amounts" value="100" step="any" style="width: 80px; padding: 8px; margin-right: 8px;" required>
-                <select name="units" style="width: 80px; padding: 8px;">
-                    ${{unitOptions}}
-                </select>
-            </td>
-            <td style="padding: 15px; width: 5%; text-align: center;">&rarr;</td>
-            <td style="padding: 15px; width: 55%;">
-                <input type="text" name="selected_matches" list="${{datalistId}}" placeholder="Search ingredient..." style="width: 300px;" required>
-                <datalist id="${{datalistId}}">${{datalistOptions}}</datalist>
-            </td>
-            <td style="padding: 15px; width: 5%;">
-                <button type="button" onclick="this.closest('tr').remove();" style="color: red; border: none; background: none; cursor: pointer; font-size: 20px;">&times;</button>
-            </td>
-        `;
-
-        table.appendChild(row);
-    }}
-    </script>
-    """
+    return render_template('edit.html',
+        recipe=r,
+        all_ingredients=all_ingredients,
+        units=available_units
+    )
 
 @app.route('/update/<recipe_id>', methods=['POST'])
 def update(recipe_id):
@@ -939,152 +397,20 @@ def update(recipe_id):
     # Update in database
     update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
 
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card" style="text-align: center;">
-        <h1>Updated!</h1>
-        <p><strong>{recipe_name}</strong> has been saved.</p>
-        <br>
-        <a href="/recipe/{recipe_id}" class="btn" style="display: inline-block; text-decoration: none;">View Recipe</a>
-    </div>
-    """
+    # Redirect to the recipe page
+    return redirect(f'/recipe/{recipe_id}')
 
 @app.route('/delete/<recipe_id>')
 def delete(recipe_id):
     # Delete from database
     delete_recipe_from_db(recipe_id)
 
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card" style="text-align: center;">
-        <h1>Deleted</h1>
-        <p>The recipe has been removed.</p>
-        <br>
-        <a href="/history" class="btn" style="display: inline-block; text-decoration: none;">View All Recipes</a>
-    </div>
-    """
+    # Redirect to history
+    return redirect('/history')
 
 @app.route('/about-rating')
 def about_rating():
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <style>
-        .content h2 {{ color: #1976D2; margin-top: 32px; font-weight: 400; }}
-        .content h3 {{ color: #333; margin-top: 24px; font-weight: 500; }}
-        .content p {{ line-height: 1.7; color: #444; }}
-        .content table {{ margin: 16px 0; }}
-        .content td, .content th {{ padding: 10px 16px; }}
-        .highlight {{ background: #e3f2fd; padding: 16px; border-radius: 8px; margin: 16px 0; }}
-        .rating-example {{ display: inline-block; padding: 6px 14px; border-radius: 16px; color: white; font-weight: 500; font-size: 14px; margin: 4px; }}
-        sup {{ font-size: 11px; color: #1976D2; }}
-        .refs {{ font-size: 13px; color: #666; line-height: 1.8; }}
-        .refs a {{ word-break: break-all; }}
-    </style>
-    <div class="card content" style="max-width: 900px;">
-        <h1>Understanding the Carbon Footprint of Meals</h1>
-        <p style="color: #666; font-style: italic;">Benchmarks and the Context Problem</p>
-
-        <div style="background: #fafafa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 20px; margin: 24px 0;">
-            <h3 style="margin-top: 0; color: #1976D2;">How Mealprint Rates Your Meals</h3>
-            <p style="margin-bottom: 12px;">Mealprint uses traffic-light indicators based on CO<sub>2</sub> per serving:</p>
-            <div style="margin: 12px 0;">
-                <span class="rating-example" style="background: #4CAF50;">🟢 Very Low Footprint</span> Less than 0.4 kg CO<sub>2</sub>e
-            </div>
-            <div style="margin: 12px 0;">
-                <span class="rating-example" style="background: #4CAF50;">🟢 Low Footprint</span> 0.4 – 1.0 kg CO<sub>2</sub>e
-            </div>
-            <div style="margin: 12px 0;">
-                <span class="rating-example" style="background: #FFC107; color: #333;">🟡 Medium Footprint</span> 1.0 – 1.8 kg CO<sub>2</sub>e
-            </div>
-            <div style="margin: 12px 0;">
-                <span class="rating-example" style="background: #f44336;">🔴 High Footprint</span> 1.8 – 2.5 kg CO<sub>2</sub>e
-            </div>
-            <div style="margin: 12px 0;">
-                <span class="rating-example" style="background: #f44336;">🔴 Very High Footprint</span> More than 2.5 kg CO<sub>2</sub>e
-            </div>
-        </div>
-
-        <h2>Introduction</h2>
-        <p>The global food system accounts for between 25-30% of human-caused greenhouse gas emissions.<sup>1</sup> As individuals seek to reduce their environmental impact, understanding the carbon footprint of individual meals has become increasingly important.</p>
-
-        <p>However, meal-level carbon footprints vary dramatically: a veggie burrito might generate 355g CO<sub>2</sub>-equivalent (CO<sub>2</sub>e), while a beef burrito with cheese and sour cream produces 3,493g CO<sub>2</sub>e—nearly ten times higher.<sup>2</sup></p>
-
-        <p>This variation creates a challenge: without clear benchmarks, consumers cannot determine whether a given meal's footprint is high, low, or somewhere in between. A number like "1,200g CO<sub>2</sub>e" is meaningless without context.</p>
-
-        <h2>Benchmarks: What's a Sustainable Meal?</h2>
-
-        <h3>Daily and Annual Targets</h3>
-        <p>Research has established several thresholds for sustainable dietary carbon footprints. The Harvard Foodprint Calculator identifies <strong>680kg CO<sub>2</sub>e per year</strong> as the upper limit of a sustainable diet.<sup>3</sup> This translates to approximately 1,863g CO<sub>2</sub>e per day, or roughly <strong>620g per meal</strong> assuming three meals daily.</p>
-
-        <p>The Paris Climate Accord established a more lenient target: approximately <strong>921g per meal</strong>.<sup>2</sup> While higher than the sustainable threshold, this represents a significant reduction from current dietary patterns.</p>
-
-        <h3>Actual Diet Footprints</h3>
-        <p>Current dietary patterns show substantial variation:</p>
-        <ul>
-            <li><strong>Meat-lover diet:</strong> ~3,300kg CO<sub>2</sub>e annually (4x the sustainable threshold)<sup>4</sup></li>
-            <li><strong>Vegetarian diet:</strong> ~1,650kg per year</li>
-            <li><strong>Vegan diet:</strong> ~1,500kg annually</li>
-        </ul>
-
-        <h3>Concrete Meal Examples</h3>
-        <table>
-            <tr><th>Meal</th><th>CO<sub>2</sub>e (grams)</th></tr>
-            <tr><td>Beef burrito (beef, cheese, sour cream, rice)</td><td><strong>3,493</strong></td></tr>
-            <tr><td>Impossible burrito (plant-based meat, guacamole, rice)</td><td><strong>581</strong></td></tr>
-            <tr><td>Veggie burrito (beans, guacamole, rice)</td><td><strong>355</strong></td></tr>
-        </table>
-        <p style="font-size: 13px; color: #666;">Source: UCLA carbon footprint research<sup>2</sup></p>
-
-        <h2>Key Drivers</h2>
-        <p>Ingredient choice dominates meal carbon footprints. Beef production generates approximately <strong>60kg CO<sub>2</sub>e per kilogram</strong>, while peas produce just <strong>1kg CO<sub>2</sub>e per kilogram</strong>—a 60-fold difference.<sup>6</sup></p>
-
-        <div class="highlight">
-            <strong>Key insight:</strong> Transportation accounts for less than 5% of most foods' carbon footprints. Ingredient selection matters far more than food miles.<sup>6</sup>
-        </div>
-
-        <h2>How Mealprint Rates Your Meals</h2>
-
-        <h3>Current Approach: Absolute Thresholds</h3>
-        <p>Mealprint currently uses simple traffic-light indicators based on CO<sub>2</sub> per serving:</p>
-
-        <div style="margin: 20px 0;">
-            <span class="rating-example" style="background: #4CAF50;">🟢 Very Low Footprint</span> Less than 0.4 kg CO<sub>2</sub>e
-        </div>
-        <div style="margin: 20px 0;">
-            <span class="rating-example" style="background: #4CAF50;">🟢 Low Footprint</span> 0.4 – 1.0 kg CO<sub>2</sub>e
-        </div>
-        <div style="margin: 20px 0;">
-            <span class="rating-example" style="background: #FFC107; color: #333;">🟡 Medium Footprint</span> 1.0 – 1.8 kg CO<sub>2</sub>e
-        </div>
-        <div style="margin: 20px 0;">
-            <span class="rating-example" style="background: #f44336;">🔴 High Footprint</span> 1.8 – 2.5 kg CO<sub>2</sub>e
-        </div>
-        <div style="margin: 20px 0;">
-            <span class="rating-example" style="background: #f44336;">🔴 Very High Footprint</span> More than 2.5 kg CO<sub>2</sub>e
-        </div>
-
-        <h3>Future: Category-Specific Ratings</h3>
-        <p>Absolute thresholds have a limitation: they ignore meal context. A 400g dessert might be rated "low" even though it's high for a dessert, while a 1,200g vegetable stir-fry dinner might be rated "medium" despite being low-carbon for a main meal.</p>
-
-        <p>Once Mealprint has sufficient recipes in each category, ratings will transition to <strong>percentile-based comparisons within meal types</strong>—so you'll see how your dessert compares to other desserts, not to all meals.</p>
-
-        <h2>References</h2>
-        <ol class="refs">
-            <li>University of Michigan Center for Sustainable Systems. (2025). Carbon Footprint Factsheet.</li>
-            <li>UCLA Dining. Fight Climate Change with Food. <a href="https://dining.ucla.edu/carbonfootprint/" target="_blank">dining.ucla.edu/carbonfootprint</a></li>
-            <li>Harvard Foodprint Calculator. <a href="https://harvard-foodprint-calculator.github.io/" target="_blank">harvard-foodprint-calculator.github.io</a></li>
-            <li>Green Eatz. (2022). How to Lower Your Food's Carbon Footprint.</li>
-            <li>Blackstone, N. T., et al. (2021). The carbon footprint of dietary guidelines around the world. <em>Nutrition Journal</em>, 20(1), 15.</li>
-            <li>Ritchie, H. (2020). You want to reduce the carbon footprint of your food? Focus on what you eat, not whether your food is local. <a href="https://ourworldindata.org/food-choice-vs-eating-local" target="_blank">Our World in Data</a></li>
-        </ol>
-
-        <hr class="divider">
-        <a href="javascript:history.back()">← Go back</a>
-    </div>
-    """
+    return render_template('about.html')
 
 # This MUST be at the very bottom of the file
 if __name__ == '__main__':

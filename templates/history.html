@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}My Recipes - Mealprint{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto pt-10">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">My Recipes</h1>
+        <a href="/" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-sm font-medium transition shadow-sm">
+            + New Recipe
+        </a>
+    </div>
+
+    {% if recipes %}
+    <!-- Recipe Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% for r in recipes %}
+        <a href="/recipe/{{ r.id }}" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition group">
+            <div class="flex items-start justify-between">
+                <div class="flex-1 min-w-0">
+                    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-emerald-600 transition truncate">{{ r.name }}</h2>
+                    {% if r.tags %}
+                    <div class="flex flex-wrap gap-1 mt-2">
+                        {% for tag in r.tags[:3] %}
+                        <span class="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="text-right ml-4 flex-shrink-0">
+                    <p class="text-2xl font-bold
+                        {% if r.co2_per_serving < 1.0 %}text-emerald-500
+                        {% elif r.co2_per_serving < 1.8 %}text-amber-500
+                        {% else %}text-rose-500{% endif %}">
+                        {{ "%.2f"|format(r.co2_per_serving) }}
+                    </p>
+                    <p class="text-slate-400 text-xs">kg CO₂</p>
+                </div>
+            </div>
+            {% if r.rating and r.rating.label %}
+            <div class="mt-4">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-medium
+                    {% if 'Low' in r.rating.label %}bg-emerald-100 text-emerald-900
+                    {% elif 'Medium' in r.rating.label %}bg-amber-100 text-amber-900
+                    {% else %}bg-rose-100 text-rose-900{% endif %}">
+                    {{ r.rating.emoji }} {{ r.rating.label }}
+                </span>
+            </div>
+            {% endif %}
+        </a>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-12 text-center">
+        <div class="text-6xl mb-4">🥗</div>
+        <h2 class="text-xl font-semibold text-slate-900 mb-2">No recipes yet</h2>
+        <p class="text-slate-500 mb-6">Start tracking the carbon footprint of your meals</p>
+        <a href="/" class="inline-block bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl text-sm font-medium transition shadow-sm">
+            Create Your First Recipe
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

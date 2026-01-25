@@ -6,10 +6,10 @@
 <div class="max-w-5xl mx-auto pt-10">
 
     <!-- Header Card: Title + Source -->
-    <div class="bg-white rounded-3xl shadow-sm p-8 mb-8">
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8">
         <div class="flex items-start justify-between">
             <div>
-                <h1 class="text-3xl md:text-4xl font-tight font-semibold text-slate-800 tracking-tight">{{ recipe.name }}</h1>
+                <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">{{ recipe.name }}</h1>
                 {% if recipe.source %}
                 <p class="mt-2 text-slate-400 text-sm">
                     {% if recipe.source.startswith('http') %}
@@ -32,7 +32,7 @@
     </div>
 
     <!-- Impact Card: The Big Number -->
-    <div class="bg-white rounded-3xl shadow-sm p-8 mb-8">
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8">
         <p class="text-slate-400 text-sm font-medium uppercase tracking-wide mb-2">Carbon Impact</p>
         <div class="flex items-baseline gap-3">
             <span class="text-6xl md:text-7xl font-bold tracking-tight
@@ -46,9 +46,9 @@
         {% if recipe.rating and recipe.rating.label %}
         <div class="mt-6">
             <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium
-                {% if 'Low' in recipe.rating.label %}bg-emerald-50 text-emerald-700
-                {% elif 'Medium' in recipe.rating.label %}bg-amber-50 text-amber-700
-                {% else %}bg-rose-50 text-rose-700{% endif %}">
+                {% if 'Low' in recipe.rating.label %}bg-emerald-100 text-emerald-900
+                {% elif 'Medium' in recipe.rating.label %}bg-amber-100 text-amber-900
+                {% else %}bg-rose-100 text-rose-900{% endif %}">
                 {{ recipe.rating.emoji }} {{ recipe.rating.label }} Footprint
             </span>
         </div>
@@ -60,21 +60,21 @@
 
     <!-- Stats Row -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="bg-white rounded-3xl shadow-sm p-6 text-center">
-            <p class="text-3xl font-semibold text-slate-800">{{ recipe.metadata.nutrition.kcal|int }}</p>
-            <p class="text-slate-400 text-sm mt-1">kcal</p>
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 text-center">
+            <p class="text-3xl font-semibold text-slate-900">{{ recipe.metadata.nutrition.kcal|int }}</p>
+            <p class="text-slate-500 text-sm mt-1">kcal</p>
         </div>
-        <div class="bg-white rounded-3xl shadow-sm p-6 text-center">
-            <p class="text-3xl font-semibold text-slate-800">{{ recipe.metadata.nutrition.protein|round(1) }}g</p>
-            <p class="text-slate-400 text-sm mt-1">protein</p>
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 text-center">
+            <p class="text-3xl font-semibold text-slate-900">{{ recipe.metadata.nutrition.protein|round(1) }}g</p>
+            <p class="text-slate-500 text-sm mt-1">protein</p>
         </div>
-        <div class="bg-white rounded-3xl shadow-sm p-6 text-center">
-            <p class="text-3xl font-semibold text-slate-800">{{ recipe.metadata.nutrition.carbs|round(1) }}g</p>
-            <p class="text-slate-400 text-sm mt-1">carbs</p>
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 text-center">
+            <p class="text-3xl font-semibold text-slate-900">{{ recipe.metadata.nutrition.carbs|round(1) }}g</p>
+            <p class="text-slate-500 text-sm mt-1">carbs</p>
         </div>
-        <div class="bg-white rounded-3xl shadow-sm p-6 text-center">
-            <p class="text-3xl font-semibold text-slate-800">{{ recipe.metadata.nutrition.fat|round(1) }}g</p>
-            <p class="text-slate-400 text-sm mt-1">fat</p>
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 text-center">
+            <p class="text-3xl font-semibold text-slate-900">{{ recipe.metadata.nutrition.fat|round(1) }}g</p>
+            <p class="text-slate-500 text-sm mt-1">fat</p>
         </div>
     </div>
 
@@ -82,15 +82,15 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
 
         <!-- Ingredients Card -->
-        <div class="bg-white rounded-3xl shadow-sm p-8">
-            <h2 class="text-lg font-semibold text-slate-800 tracking-tight mb-6">Ingredients</h2>
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
+            <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-6">Ingredients</h2>
             {% if recipe.original_ingredients %}
             <div class="space-y-3">
                 {% for line in recipe.original_ingredients.split('\n') %}
                 {% if line.strip() %}
                 <label class="flex items-start gap-3 cursor-pointer group">
                     <input type="checkbox" class="mt-1 w-5 h-5 rounded-lg border-2 border-slate-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer">
-                    <span class="text-slate-700 group-hover:text-slate-900 transition">{{ line.strip() }}</span>
+                    <span class="text-slate-900 font-medium group-hover:text-slate-700 transition">{{ line.strip() }}</span>
                 </label>
                 {% endif %}
                 {% endfor %}
@@ -101,9 +101,9 @@
                 <label class="flex items-center justify-between gap-3 cursor-pointer group">
                     <div class="flex items-center gap-3">
                         <input type="checkbox" class="w-5 h-5 rounded-lg border-2 border-slate-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer">
-                        <span class="text-slate-700 group-hover:text-slate-900 transition">{{ ing.item }}</span>
+                        <span class="text-slate-900 font-medium group-hover:text-slate-700 transition">{{ ing.item }}</span>
                     </div>
-                    <span class="text-slate-400 text-sm">{{ ing.grams|int }}g</span>
+                    <span class="text-slate-500 text-sm">{{ ing.grams|int }}g</span>
                 </label>
                 {% endfor %}
             </ul>
@@ -112,14 +112,14 @@
 
         <!-- Instructions Card -->
         {% if recipe.notes %}
-        <div class="bg-white rounded-3xl shadow-sm p-8">
-            <h2 class="text-lg font-semibold text-slate-800 tracking-tight mb-6">Instructions</h2>
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
+            <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-6">Instructions</h2>
             <div class="space-y-4">
                 {% for step in recipe.notes.split('\n') %}
                 {% if step.strip() %}
                 <label class="flex items-start gap-3 cursor-pointer group">
                     <input type="checkbox" class="mt-1 w-5 h-5 rounded-lg border-2 border-slate-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer flex-shrink-0">
-                    <span class="text-slate-600 leading-relaxed group-hover:text-slate-800 transition checked-line">{{ step.strip() }}</span>
+                    <span class="text-slate-900 font-medium leading-relaxed group-hover:text-slate-700 transition checked-line">{{ step.strip() }}</span>
                 </label>
                 {% endif %}
                 {% endfor %}
@@ -130,9 +130,9 @@
     </div>
 
     <!-- CO2 Breakdown (Collapsible) -->
-    <details class="bg-white rounded-3xl shadow-sm mb-8 group">
+    <details class="bg-white rounded-3xl shadow-sm border border-slate-200 mb-8 group">
         <summary class="p-8 cursor-pointer list-none flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-slate-800 tracking-tight">CO₂ Breakdown by Ingredient</h2>
+            <h2 class="text-lg font-semibold text-slate-900 tracking-tight">CO₂ Breakdown by Ingredient</h2>
             <svg class="w-5 h-5 text-slate-400 transform transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
             </svg>
@@ -141,10 +141,10 @@
             <div class="space-y-3">
                 {% for ing in recipe.ingredients %}
                 <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                    <span class="text-slate-700">{{ ing.item }}</span>
+                    <span class="text-slate-900">{{ ing.item }}</span>
                     <div class="flex items-center gap-4">
-                        <span class="text-slate-400 text-sm">{{ ing.grams|int }}g</span>
-                        <span class="text-slate-600 font-medium w-20 text-right">{{ "%.2f"|format(ing.co2) }} kg</span>
+                        <span class="text-slate-500 text-sm">{{ ing.grams|int }}g</span>
+                        <span class="text-slate-700 font-medium w-20 text-right">{{ "%.2f"|format(ing.co2) }} kg</span>
                     </div>
                 </div>
                 {% endfor %}

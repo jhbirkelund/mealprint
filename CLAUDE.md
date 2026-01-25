@@ -6,7 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Mealprint is a Python application for calculating the carbon footprint (CO2 emissions) of recipes based on ingredient composition. It provides three interfaces: a Flask web application, a CLI tool, and an automated web scraper.
 
-## Running the Application
+## Deployment
+
+**Production**: Hosted on Render at `mealprint.onrender.com`
+- Uses Gunicorn as WSGI server
+- PostgreSQL database hosted on Supabase (free tier, no expiration)
+- Auto-deploys from GitHub `main` branch
+
+**Environment Variables** (configured in Render):
+- `DATABASE_URL` - Supabase PostgreSQL connection string (Session Pooler)
+
+## Running Locally
 
 ```bash
 # Web application (primary interface) - runs on http://localhost:8080
@@ -19,6 +29,8 @@ python meal_builder.py
 python auto_builder.py
 ```
 
+**Local database**: Set `DATABASE_URL` environment variable or the app falls back to local development mode.
+
 ## Architecture
 
 ### Core Components
@@ -28,14 +40,24 @@ python auto_builder.py
   - `/scrape` - Extracts recipe from URL, auto-populates form
   - `/summary` - Ingredient correction UI with editable amounts/units and "Add ingredient" button
   - `/calculate` - CO2 + nutrition calculation with preview
-  - `/save/` - Persists recipe to JSON
+  - `/save/` - Persists recipe to database
   - `/history` - All saved recipes list
   - `/recipe/<uuid>` - Individual recipe view (original ingredients, nutrition, instructions, collapsible calculated table)
   - `/edit/<uuid>` - Edit recipe (reuses summary-style UI)
   - `/update/<uuid>` - Saves recipe edits
   - `/delete/<uuid>` - Deletes recipe (with confirmation)
+  - `/about-rating` - Explains the carbon footprint rating system
 
-  Uses f-string HTML generation with Material Design styling + Google Material Icons. Ingredient matching uses a hybrid approach: token-based word matching + rapidfuzz fuzzy matching, displaying multiple candidates in a dropdown for user selection.
+  Uses Jinja2 templates with Tailwind CSS. Ingredient matching uses a hybrid approach: token-based word matching + rapidfuzz fuzzy matching, displaying multiple candidates in a dropdown for user selection.
+
+- **db.py** - Database module for PostgreSQL (Supabase):
+  - `get_connection()` - Connect using DATABASE_URL env var
+  - `init_db()` - Create tables (recipes, recipe_ingredients, recipe_tags)
+  - `save_recipe_to_db()` - Insert new recipe, returns recipe_id
+  - `get_all_recipes()` - List all recipes with nested ingredients/tags
+  - `get_recipe_by_id()` - Get single recipe by UUID
+  - `update_recipe_in_db()` - Update existing recipe
+  - `delete_recipe_from_db()` - Delete recipe (CASCADE deletes related data)
 
 - **recipe_manager.py** - Shared utilities module containing:
   - `save_recipe()` - Persists recipes to recipes.json with full schema (id, tags, source, notes, original_ingredients, nutrition)
@@ -49,33 +71,75 @@ python auto_builder.py
 
 - **auto_builder.py** - Uses recipe_scrapers library to extract recipes from URLs, then processes them through the CO2 calculation pipeline
 
+### Templates (templates/)
+
+Uses Jinja2 templates with Tailwind CSS (via CDN) for a modern, responsive UI:
+
+- **base.html** - Shared layout with Tailwind, Inter font, navigation bar
+- **home.html** - Recipe input page (URL scraping + manual entry)
+- **summary.html** - Ingredient correction with dropdowns and "Add ingredient"
+- **calculate.html** - Results preview with CO2 impact before saving
+- **recipe.html** - Individual recipe view with Bento Box layout
+- **history.html** - Recipe list with grid cards
+- **edit.html** - Edit recipe form
+- **about.html** - Carbon rating explanation page
+
+**Design System:**
+- Container: `max-w-4xl mx-auto` (5xl for recipe page)
+- Cards: `bg-white rounded-3xl shadow-sm border border-slate-200`
+- Primary text: `text-slate-900` for headings, `text-slate-700` for body
+- Accent color: `emerald-500` for buttons and interactive elements
+- CO2 color coding: emerald (<1.0), amber (1.0-1.8), rose (>1.8 kg)
+- Rating badges: `bg-emerald-100 text-emerald-900` (darker text for accessibility)
+
 ### Data Flow
 
 1. **Input**: User enters recipe manually OR scrapes from URL (extracts title, servings, ingredients, instructions)
 2. **Parse**: quantulum3 extracts quantities and units from ingredient text
 3. **Match**: Hybrid matching (token-based + rapidfuzz) suggests DB ingredients; user confirms/corrects
 4. **Calculate**: Convert to grams → lookup CO2-eq/kg and nutrition → sum totals
-5. **Save**: Store to recipes.json with UUID, tags, source, notes, original ingredients
+5. **Save**: Store to PostgreSQL database with UUID, tags, source, notes, original ingredients
 
 ### Data Files
 
 - **climate_data.xlsx** - Environmental impact database with CO2-eq/kg values and nutrition data (Energy KJ, Fat, Carbs, Protein per 100g). Uses 'DK' sheet.
-- **recipes.json** - JSON array storing recipes with structure:
-  ```json
-  {
-    "id": "uuid-string",
-    "name": "Recipe Name",
-    "total_co2": 1.234,
-    "servings": 4,
-    "co2_per_serving": 0.309,
-    "ingredients": [{"item": "...", "amount": 200, "unit": "g", "grams": 200, "co2": 0.5}],
-    "tags": ["dinner", "quick"],
-    "source": "https://... or 'Family recipe'",
-    "notes": "Instructions text",
-    "original_ingredients": "Original ingredient list as entered",
-    "metadata": {"rating": null, "nutrition": {"kcal": 450, "fat": 12, "carbs": 30, "protein": 25}}
-  }
-  ```
+
+### Database Schema (PostgreSQL)
+
+```sql
+-- recipes table
+CREATE TABLE recipes (
+    id UUID PRIMARY KEY,
+    name TEXT NOT NULL,
+    total_co2 REAL,
+    servings REAL,
+    co2_per_serving REAL,
+    source TEXT,
+    notes TEXT,
+    original_ingredients TEXT,
+    nutrition JSONB,
+    rating JSONB,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- recipe_ingredients table
+CREATE TABLE recipe_ingredients (
+    id SERIAL PRIMARY KEY,
+    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+    item TEXT,
+    amount REAL,
+    unit TEXT,
+    grams REAL,
+    co2 REAL
+);
+
+-- recipe_tags table
+CREATE TABLE recipe_tags (
+    id SERIAL PRIMARY KEY,
+    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+    tag TEXT
+);
+```
 
 ### Config Files (config/)
 
@@ -84,11 +148,15 @@ python auto_builder.py
 
 ## Dependencies
 
+- flask - Web framework with Jinja2 templating
 - pandas - Excel data handling for climate_data.xlsx
-- flask - Web framework
 - quantulum3 - Parses quantities from natural language text (e.g., "200g beef")
 - recipe_scrapers - Extracts recipe data from website URLs
 - rapidfuzz - Fast fuzzy string matching for ingredient lookup
+- psycopg2-binary - PostgreSQL database adapter
+- gunicorn - Production WSGI server (for Render deployment)
+- setuptools - Required for pkg_resources (quantulum3 dependency)
+- openpyxl - Excel file reading
 
 ## Vision & Long-term Goals
 - **Project Goal:** Automate recipe carbon footprinting to empower sustainable food choices.
@@ -96,11 +164,18 @@ python auto_builder.py
 - **Future Integration:** Building out API capabilities and automated data flows.
 
 ### Planned Improvements
-- **Footprint Rating System** - Percentile-based ratings (very-low, low, medium, high, very-high) relative to recipe database
+- **Percentile-based ratings** - Compare recipes within categories (e.g., "low for a dessert")
 - AI-powered ingredient matching (LLM to match "lean ground beef" → "Beef, minced" with context understanding)
 - Admin UI for editing config files (units.json, ingredient_aliases.json) without touching code
+- User authentication for personal recipe collections
 
 ### Recently Completed
+- **Production deployment on Render** with auto-deploy from GitHub
+- **PostgreSQL database on Supabase** replacing local JSON storage
+- **Jinja2 templates with Tailwind CSS** replacing f-string HTML generation
+- **Premium dashboard design** with Bento Box layout, big CO2 numbers, nutrition stats
+- **Accessibility improvements** - better contrast (text-slate-900), card borders, darker badge text
+- **Interactive recipe view** - checkboxes for ingredients/steps with strike-through effect
 - UUID-based recipe identification (multi-user ready)
 - Tags system for recipe categorization
 - Source field (auto-populated from scraped URLs)
@@ -110,7 +185,7 @@ python auto_builder.py
 - Recipe deletion with confirmation
 - Editable amounts/units on summary page
 - Add ingredient functionality
-- Collapsible calculated ingredients table
+- Collapsible CO2 breakdown table
 
 ## Working Guidelines (Personalized)
 - **MVP Thinking:** Always build the simplest version that works first. If a task is complex, break it into tiny, verifiable steps.
