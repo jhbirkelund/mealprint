@@ -1,4 +1,4 @@
-from flask import Flask, request
+from flask import Flask, request, render_template
 import pandas as pd
 import html
 import json
@@ -709,105 +709,11 @@ def recipe(recipe_id):
         </div>
         """
 
-    # Build ingredients table
-    ingredients_rows = ""
-    for ing in r.get('ingredients', []):
-        ingredients_rows += f"<tr><td>{ing.get('item', '')}</td><td>{ing.get('grams', 0):.0f} g</td><td>{ing.get('co2', 0):.2f} kg</td></tr>"
+    # Calculate rating if not stored
+    if not r.get('rating') or not r['rating'].get('label'):
+        r['rating'] = calculate_rating(r.get('co2_per_serving', 0))
 
-    # Get nutrition
-    nutrition = r.get('metadata', {}).get('nutrition', {})
-    kcal = nutrition.get('kcal', 0)
-    fat = nutrition.get('fat', 0)
-    carbs = nutrition.get('carbs', 0)
-    protein = nutrition.get('protein', 0)
-
-    # Build rating badge (calculate if not stored)
-    stored_rating = r.get('rating')
-    if stored_rating:
-        rating = stored_rating
-    else:
-        rating = calculate_rating(r.get('co2_per_serving', 0))
-    co2_kg = r.get('co2_per_serving', 0)
-    rating_badge = f'''<span style="display: inline-block; background: {rating['color']}; color: white; padding: 8px 16px; border-radius: 20px; font-weight: 500; font-size: 14px;">{rating['emoji']} {rating['label']} Footprint</span>'''
-    rating_section = f'''<div style="margin: 16px 0;">
-        {rating_badge}
-        <span style="color: #666; font-size: 13px; margin-left: 12px;" title="Rating based on CO2 per serving. Compares to sustainable meal targets.">({co2_kg:.2f} kg CO2 per serving) <a href="/about-rating" style="text-decoration: none; cursor: help; border-bottom: 1px dotted #999;">ⓘ</a></span>
-    </div>'''
-
-    # Build tags HTML
-    tags = r.get('tags', [])
-    tags_html = "".join([f'<span class="chip">{tag}</span>' for tag in tags])
-    tags_section = f'<div class="chips">{tags_html}</div>' if tags else ""
-
-    # Build source HTML (clickable if URL)
-    source = r.get('source', '')
-    if source.startswith('http'):
-        source_html = f'<p style="color: #666; font-size: 14px;">Source: <a href="{source}" target="_blank">{source}</a></p>'
-    elif source:
-        source_html = f'<p style="color: #666; font-size: 14px;">Source: {source}</p>'
-    else:
-        source_html = ""
-
-    # Build original ingredients section
-    original_ing = r.get('original_ingredients', '')
-    original_ing_html = f'<h2 style="margin-top: 24px;">Ingredients</h2><div style="white-space: pre-wrap; font-size: 14px;">{html.escape(original_ing)}</div>' if original_ing else ""
-
-    # Build notes section
-    notes_html = f'<h2 style="margin-top: 32px;">Instructions</h2><div style="white-space: pre-wrap; font-size: 14px;">{html.escape(r.get("notes", ""))}</div>' if r.get('notes') else ""
-
-    return f"""
-    {MATERIAL_CSS}
-    {NAV_BAR}
-    <div class="card">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1 style="margin: 0;">{r['name']}</h1>
-            <div>
-                <a href="/edit/{recipe_id}" class="btn" style="text-decoration: none; padding: 8px 16px; font-size: 13px;">Edit</a>
-                <button onclick="confirmDelete()" class="btn" style="margin-left: 8px; padding: 8px 12px;"><span class="material-icons" style="font-size: 16px; vertical-align: middle;">delete</span></button>
-            </div>
-        </div>
-        {rating_section}
-        {tags_section}
-        {source_html}
-        <p><strong>Total footprint:</strong> {r.get('total_co2', 0):.2f} kg CO2e · <strong>Servings:</strong> {r.get('servings', 1):.0f}</p>
-
-        {original_ing_html}
-
-        <h2 style="margin-top: 32px;">Per Serving</h2>
-        <table>
-            <tr><td>CO2</td><td>{r.get('co2_per_serving', 0):.2f} kg</td></tr>
-            <tr><td>Calories</td><td>{kcal:.0f} kcal</td></tr>
-            <tr><td>Fat</td><td>{fat:.1f} g</td></tr>
-            <tr><td>Carbs</td><td>{carbs:.1f} g</td></tr>
-            <tr><td>Protein</td><td>{protein:.1f} g</td></tr>
-        </table>
-
-        {notes_html}
-
-        <details style="margin-top: 32px;">
-            <summary style="cursor: pointer; font-weight: 500; color: #1976D2;">Calculated Ingredients</summary>
-            <table style="margin-top: 12px;">
-                <tr>
-                    <th>Ingredient</th>
-                    <th>Weight</th>
-                    <th>CO2</th>
-                </tr>
-                {ingredients_rows}
-            </table>
-        </details>
-
-        <hr class="divider">
-        <a href="/history">← Back to all recipes</a>
-    </div>
-
-    <script>
-    function confirmDelete() {{
-        if (confirm('Are you sure you want to delete this recipe?')) {{
-            window.location.href = '/delete/{recipe_id}';
-        }}
-    }}
-    </script>
-    """
+    return render_template('recipe.html', recipe=r)
 
 @app.route('/edit/<recipe_id>')
 def edit(recipe_id):
