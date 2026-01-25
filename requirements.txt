@@ -6,3 +6,4 @@ rapidfuzz
 openpyxl
 gunicorn
 setuptools
+psycopg2-binary

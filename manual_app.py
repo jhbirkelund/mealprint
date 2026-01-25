@@ -7,8 +7,16 @@ from quantulum3 import parser
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, calculate_rating
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
+from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db
 
 app = Flask(__name__)
+
+# Initialize database tables on startup
+try:
+    init_db()
+    print("Database initialized successfully")
+except Exception as e:
+    print(f"Database initialization error: {e}")
 
 # Shared Material Design CSS
 MATERIAL_CSS = """
@@ -596,7 +604,6 @@ def calculate():
     </div>
     """
 
-from recipe_manager import save_recipe
 @app.route('/save/', methods=['POST'])
 def save():
     recipe_name = request.form.get('recipe_name')
@@ -618,7 +625,12 @@ def save():
     notes = request.form.get('notes', '')
     original_ingredients = request.form.get('original_ingredients', '')
 
-    save_recipe(recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients)
+    # Calculate rating
+    co2_per_serving = total_co2 / servings if servings > 0 else 0
+    rating = calculate_rating(co2_per_serving)
+
+    # Save to database
+    save_recipe_to_db(recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
 
     return f"""
     {MATERIAL_CSS}
@@ -636,11 +648,10 @@ def save():
 # Show list of all recipes in DB:
 @app.route('/history')
 def history():
-    import json
-    import os
+    # Load recipes from database
+    recipes = get_all_recipes()
 
-    #Check if the file exists first
-    if not os.path.exists('recipes.json'):
+    if not recipes:
         return f"""
         {MATERIAL_CSS}
         {NAV_BAR}
@@ -651,18 +662,14 @@ def history():
             <a href="/" class="btn" style="display: inline-block; text-decoration: none;">Create Your First Recipe</a>
         </div>
         """
-    
-    # Load recipes
-    with open('recipes.json', 'r') as f:
-        recipes = json.load(f)
-    
+
     # Build table rows
     table_rows = ""
     for r in recipes:
         co2_per_serving = r.get('co2_per_serving', 0)
         # Get or calculate rating
         stored_rating = r.get('rating')
-        if stored_rating:
+        if stored_rating and stored_rating.get('label'):
             rating = stored_rating
         else:
             rating = calculate_rating(co2_per_serving)
@@ -689,23 +696,9 @@ def history():
 
 @app.route('/recipe/<recipe_id>')
 def recipe(recipe_id):
-    import os
+    # Get recipe from database
+    r = get_recipe_by_id(recipe_id)
 
-    if not os.path.exists('recipes.json'):
-        return f"""
-        {MATERIAL_CSS}
-        {NAV_BAR}
-        <div class="card">
-            <h1>Recipe not found</h1>
-            <a href="/history">← Back to all recipes</a>
-        </div>
-        """
-
-    with open('recipes.json', 'r') as f:
-        recipes = json.load(f)
-
-    # Find recipe by UUID
-    r = next((recipe for recipe in recipes if recipe.get('id') == recipe_id), None)
     if not r:
         return f"""
         {MATERIAL_CSS}
@@ -818,22 +811,9 @@ def recipe(recipe_id):
 
 @app.route('/edit/<recipe_id>')
 def edit(recipe_id):
-    import os
+    # Get recipe from database
+    r = get_recipe_by_id(recipe_id)
 
-    if not os.path.exists('recipes.json'):
-        return f"""
-        {MATERIAL_CSS}
-        {NAV_BAR}
-        <div class="card">
-            <h1>Recipe not found</h1>
-            <a href="/history">← Back to all recipes</a>
-        </div>
-        """
-
-    with open('recipes.json', 'r') as f:
-        recipes = json.load(f)
-
-    r = next((recipe for recipe in recipes if recipe.get('id') == recipe_id), None)
     if not r:
         return f"""
         {MATERIAL_CSS}
@@ -975,19 +955,6 @@ def edit(recipe_id):
 
 @app.route('/update/<recipe_id>', methods=['POST'])
 def update(recipe_id):
-    import os
-
-    if not os.path.exists('recipes.json'):
-        return "Recipe not found", 404
-
-    with open('recipes.json', 'r') as f:
-        recipes = json.load(f)
-
-    # Find recipe index
-    recipe_idx = next((i for i, recipe in enumerate(recipes) if recipe.get('id') == recipe_id), None)
-    if recipe_idx is None:
-        return "Recipe not found", 404
-
     # Get form data
     recipe_name = request.form.get('recipe_name')
     servings = float(request.form.get('servings', 1))
@@ -1053,27 +1020,16 @@ def update(recipe_id):
     co2_per_serving = round(total_co2 / servings, 3) if servings > 0 else 0
     rating = calculate_rating(co2_per_serving)
 
-    # Update the recipe
-    recipes[recipe_idx]['name'] = recipe_name
-    recipes[recipe_idx]['servings'] = servings
-    recipes[recipe_idx]['total_co2'] = round(total_co2, 3)
-    recipes[recipe_idx]['co2_per_serving'] = co2_per_serving
-    recipes[recipe_idx]['rating'] = rating
-    recipes[recipe_idx]['ingredients'] = detailed_ingredients
-    recipes[recipe_idx]['tags'] = tags
-    recipes[recipe_idx]['source'] = source
-    recipes[recipe_idx]['notes'] = notes
-    recipes[recipe_idx]['original_ingredients'] = original_ingredients
-    recipes[recipe_idx]['metadata']['nutrition'] = {
+    # Nutrition per serving
+    nutrition = {
         "kcal": round(total_kcal / servings, 0) if servings > 0 else 0,
         "fat": round(total_fat / servings, 1) if servings > 0 else 0,
         "carbs": round(total_carbs / servings, 1) if servings > 0 else 0,
         "protein": round(total_protein / servings, 1) if servings > 0 else 0
     }
 
-    # Save back to file
-    with open('recipes.json', 'w') as f:
-        json.dump(recipes, f, indent=4)
+    # Update in database
+    update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
 
     return f"""
     {MATERIAL_CSS}
@@ -1088,20 +1044,8 @@ def update(recipe_id):
 
 @app.route('/delete/<recipe_id>')
 def delete(recipe_id):
-    import os
-
-    if not os.path.exists('recipes.json'):
-        return "Recipe not found", 404
-
-    with open('recipes.json', 'r') as f:
-        recipes = json.load(f)
-
-    # Find and remove recipe
-    recipes = [r for r in recipes if r.get('id') != recipe_id]
-
-    # Save back to file
-    with open('recipes.json', 'w') as f:
-        json.dump(recipes, f, indent=4)
+    # Delete from database
+    delete_recipe_from_db(recipe_id)
 
     return f"""
     {MATERIAL_CSS}
