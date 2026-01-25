@@ -79,8 +79,8 @@
             <input type="hidden" name="servings" value="{{ servings }}">
             <input type="hidden" name="total_co2" value="{{ total_co2 }}">
             <input type="hidden" name="co2_per_serving" value="{{ co2_per_serving }}">
-            <input type="hidden" name="nutrition" value="{{ nutrition_json }}">
-            <input type="hidden" name="detailed_ingredients" value="{{ ingredients_json }}">
+            <input type="hidden" name="nutrition" value="{{ nutrition | tojson }}">
+            <input type="hidden" name="detailed_ingredients" value="{{ ingredients | tojson }}">
             <input type="hidden" name="original_ingredients" value="{{ original_ingredients }}">
 
             <div class="space-y-6">

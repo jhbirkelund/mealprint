@@ -1,6 +1,5 @@
 from flask import Flask, request, render_template, redirect
 import pandas as pd
-import html
 import json
 import os
 from quantulum3 import parser
@@ -236,9 +235,7 @@ def calculate():
         ingredients=detailed_ingredients,
         source=source,
         notes=notes,
-        original_ingredients=original_ingredients,
-        ingredients_json=html.escape(json.dumps(detailed_ingredients)),
-        nutrition_json=html.escape(json.dumps(nutrition))
+        original_ingredients=original_ingredients
     )
 
 @app.route('/save/', methods=['POST'])

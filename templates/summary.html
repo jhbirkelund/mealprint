@@ -52,19 +52,12 @@
                     <!-- Arrow -->
                     <div class="hidden md:block text-slate-300">→</div>
 
-                    <!-- Match dropdown -->
+                    <!-- Match input with autocomplete -->
                     <div class="flex-1">
-                        {% if item.candidates %}
-                        <select name="selected_matches" required
-                            class="w-full px-3 py-2 rounded-xl border {% if item.confident %}border-slate-200{% else %}border-amber-300 bg-amber-50{% endif %} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
-                            {% for cand in item.candidates %}
-                            <option value="{{ cand }}" {% if loop.first and item.confident %}selected{% endif %}>{{ cand }}</option>
-                            {% endfor %}
-                        </select>
-                        {% else %}
-                        <input type="text" name="selected_matches" list="all-ingredients" required placeholder="Search ingredient..."
-                            class="w-full px-3 py-2 rounded-xl border border-amber-300 bg-amber-50 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
-                        {% endif %}
+                        <input type="text" name="selected_matches" list="all-ingredients" required
+                            value="{% if item.candidates and item.confident %}{{ item.candidates[0] }}{% endif %}"
+                            placeholder="Search ingredient..."
+                            class="w-full px-3 py-2 rounded-xl border {% if item.confident %}border-slate-200{% else %}border-amber-300 bg-amber-50{% endif %} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
                     </div>
 
                     <!-- Remove button -->
