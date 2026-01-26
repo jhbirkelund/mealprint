@@ -1,23 +1,44 @@
 {% extends "base.html" %}
 
-{% block title %}My Recipes - Mealprint{% endblock %}
+{% block title %}Recipes - Mealprint{% endblock %}
 
 {% block content %}
 <div class="max-w-5xl mx-auto pt-10">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">My Recipes</h1>
+        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Recipes</h1>
         <a href="/" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-sm font-medium transition shadow-sm">
             + New Recipe
         </a>
     </div>
 
     {% if recipes %}
+    <!-- Search Field -->
+    <div class="mb-6">
+        <input type="text" id="searchInput" placeholder="Search recipes..."
+            class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400">
+    </div>
+
+    <!-- Tag Filters -->
+    {% if all_tags %}
+    <div class="flex flex-wrap gap-2 mb-6">
+        <button data-tag="all" class="tag-filter active bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition">
+            Show All
+        </button>
+        {% for tag in all_tags %}
+        <button data-tag="{{ tag }}" class="tag-filter bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-2xl text-sm font-medium transition">
+            {{ tag }}
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
     <!-- Recipe Grid -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div id="recipeGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% for r in recipes %}
-        <a href="/recipe/{{ r.id }}" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition group">
+        <a href="/recipe/{{ r.id }}" class="recipe-card bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition group"
+            data-name="{{ r.name|lower }}"
+            data-tags="{{ r.tags|join(',') if r.tags else '' }}">
             <div class="flex items-start justify-between">
                 <div class="flex-1 min-w-0">
                     <h2 class="text-lg font-semibold text-slate-900 group-hover:text-emerald-600 transition truncate">{{ r.name }}</h2>
@@ -66,4 +87,57 @@
     {% endif %}
 
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const tagFilters = document.querySelectorAll('.tag-filter');
+    const recipeCards = document.querySelectorAll('.recipe-card');
+
+    let activeTag = 'all';
+
+    // Tag filter click handler
+    tagFilters.forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active state
+            tagFilters.forEach(b => {
+                b.classList.remove('active', 'bg-emerald-500', 'text-white');
+                b.classList.add('bg-slate-100', 'text-slate-600');
+            });
+            this.classList.add('active', 'bg-emerald-500', 'text-white');
+            this.classList.remove('bg-slate-100', 'text-slate-600');
+
+            activeTag = this.dataset.tag;
+            filterRecipes();
+        });
+    });
+
+    // Search input handler
+    if (searchInput) {
+        searchInput.addEventListener('input', filterRecipes);
+    }
+
+    function filterRecipes() {
+        const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+        recipeCards.forEach(card => {
+            const name = card.dataset.name || '';
+            const tags = card.dataset.tags || '';
+
+            // Check search match
+            const matchesSearch = name.includes(searchTerm);
+
+            // Check tag match
+            const matchesTag = activeTag === 'all' || tags.split(',').includes(activeTag);
+
+            // Show/hide card
+            if (matchesSearch && matchesTag) {
+                card.style.display = '';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

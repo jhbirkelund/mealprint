@@ -280,7 +280,14 @@ def history():
         if not r.get('rating') or not r['rating'].get('label'):
             r['rating'] = calculate_rating(r.get('co2_per_serving', 0))
 
-    return render_template('history.html', recipes=recipes)
+    # Collect all unique tags across recipes
+    all_tags = set()
+    for r in recipes:
+        if r.get('tags'):
+            all_tags.update(r['tags'])
+    all_tags = sorted(all_tags)
+
+    return render_template('history.html', recipes=recipes, all_tags=all_tags)
 
 @app.route('/recipe/<recipe_id>')
 def recipe(recipe_id):

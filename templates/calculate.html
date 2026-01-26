@@ -22,13 +22,18 @@
             </span>
             <span class="text-slate-400 text-xl">kg CO₂ per serving</span>
         </div>
-        <div class="mt-6">
+        <div class="mt-6 flex items-center gap-3">
             <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium
                 {% if 'Low' in rating.label %}bg-emerald-100 text-emerald-900
                 {% elif 'Medium' in rating.label %}bg-amber-100 text-amber-900
                 {% else %}bg-rose-100 text-rose-900{% endif %}">
                 {{ rating.emoji }} {{ rating.label }} Footprint
             </span>
+            <a href="/about-rating" class="text-slate-400 hover:text-emerald-600 transition" title="How are ratings calculated?">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </a>
         </div>
         <p class="text-slate-400 text-sm mt-6">
             Total: {{ "%.2f"|format(total_co2) }} kg CO₂ for {{ servings|int }} servings
