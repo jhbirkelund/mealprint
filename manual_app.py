@@ -17,19 +17,70 @@ try:
 except Exception as e:
     print(f"Database initialization error: {e}")
 
-# Load the DB once at startup
-df = pd.read_excel('climate_data.xlsx', sheet_name='DK')
+# Load both English and Danish climate databases at startup
+df_en = pd.read_excel('climate_data.xlsx', sheet_name='DK')
+df_dk_raw = pd.read_excel('climate_data_DK.xlsx', sheet_name='DK')
+
+# Standardize Danish column names to match English
+df_dk = df_dk_raw.rename(columns={
+    'Navn': 'Name',
+    'Total kg CO2e/kg': 'Total kg CO2-eq/kg',
+    'Energi (KJ/100 g)': 'Energy (KJ/100 g)',
+    'Fedt (g/100 g)': 'Fat (g/100 g)',
+    'Kulhydrat (g/100 g)': 'Carbohydrate (g/100 g)',
+    'Protein (g/100 g)': 'Protein (g/100 g)'
+})
+
+# Keep df as alias for backwards compatibility (defaults to English)
+df = df_en
+
+def detect_language(text):
+    """Detect if text is Danish or English based on characters and common words."""
+    text_lower = text.lower()
+
+    # Danish-specific characters
+    if any(c in text for c in 'æøå'):
+        return 'dk'
+
+    # Common Danish words/units
+    danish_indicators = ['spsk', 'tsk', 'stk', 'fed ', ' og ', ' med ', ' til ', ' eller ',
+                         'hakket', 'revet', 'skiver', 'skåret', 'frisk', 'tørret']
+    if any(word in text_lower for word in danish_indicators):
+        return 'dk'
+
+    return 'en'
+
+def get_db_for_language(lang):
+    """Return the appropriate dataframe for the language."""
+    return df_dk if lang == 'dk' else df_en
 
 def get_processed_ingredients(raw_text_block):
     processed_list = []
     lines = raw_text_block.split('\n')
 
-    # Informal units that quantulum3 doesn't recognize - map to grams
+    # Detect language of the full text block
+    detected_lang = detect_language(raw_text_block)
+    active_df = get_db_for_language(detected_lang)
+
+    # Informal units that quantulum3 doesn't recognize - map to standard units
     INFORMAL_UNITS = {
+        # English
         'handful': '30g',
         'handfuls': '30g',
         'sprinkling': '2g',
         'sprinkle': '2g',
+        # Danish
+        'spsk': '15ml',      # spiseskefuld (tablespoon)
+        'spsk.': '15ml',
+        'spiseskefuld': '15ml',
+        'spiseskefulde': '15ml',
+        'tsk': '5ml',        # teskefuld (teaspoon)
+        'tsk.': '5ml',
+        'teskefuld': '5ml',
+        'teskefulde': '5ml',
+        'stk': '1 piece',    # styk (piece)
+        'stk.': '1 piece',
+        'knivspids': '0.5g', # knife tip
     }
 
     for line in lines:
@@ -61,7 +112,7 @@ def get_processed_ingredients(raw_text_block):
 
             # Step 1: Token-based contains matching
             # Check if any word from search (>3 chars) appears in DB name, or vice versa
-            all_names = df['Name'].tolist()
+            all_names = [n for n in active_df['Name'].tolist() if isinstance(n, str)]
             search_words = [w.lower() for w in search_query.split() if len(w) > 3]
 
             def word_match_score(name):
@@ -164,8 +215,10 @@ def summary():
         raw_unit = item['unit'].lower().strip() if item['unit'] else ""
         item['unit'] = UNIT_MAP.get(raw_unit, raw_unit)
 
-    # Get all ingredients and units for the template
-    all_ingredients = sorted(df['Name'].unique().tolist())
+    # Get all ingredients from BOTH databases for the template (user can search either language)
+    all_ingredients_en = [n for n in df_en['Name'].unique().tolist() if isinstance(n, str)]
+    all_ingredients_dk = [n for n in df_dk['Name'].unique().tolist() if isinstance(n, str)]
+    all_ingredients = sorted(set(all_ingredients_en + all_ingredients_dk))
     available_units = list(CONVERSIONS['units'].keys())
 
     return render_template('summary.html',
@@ -203,8 +256,18 @@ def calculate():
         unit = units[i]
         match_name = selected_matches[i]
 
-        # Look up CO2 values from loaded dataframe (df)
-        db_row = df[df['Name'] == match_name].iloc[0]
+        # Look up CO2 values from both databases (try English first, then Danish)
+        db_match_en = df_en[df_en['Name'] == match_name]
+        db_match_dk = df_dk[df_dk['Name'] == match_name]
+
+        if not db_match_en.empty:
+            db_row = db_match_en.iloc[0]
+        elif not db_match_dk.empty:
+            db_row = db_match_dk.iloc[0]
+        else:
+            # Skip if not found in either database
+            continue
+
         co2_val = db_row['Total kg CO2-eq/kg']
 
         # Calculate weight and impact
@@ -332,8 +395,10 @@ def edit(recipe_id):
     if not r:
         return render_template('home.html', error="Recipe not found")
 
-    # Get all ingredients and units for the template
-    all_ingredients = sorted(df['Name'].unique().tolist())
+    # Get all ingredients from BOTH databases for the template
+    all_ingredients_en = [n for n in df_en['Name'].unique().tolist() if isinstance(n, str)]
+    all_ingredients_dk = [n for n in df_dk['Name'].unique().tolist() if isinstance(n, str)]
+    all_ingredients = sorted(set(all_ingredients_en + all_ingredients_dk))
     available_units = list(CONVERSIONS['units'].keys())
 
     return render_template('edit.html',
@@ -373,12 +438,17 @@ def update(recipe_id):
         unit = units[i]
         match_name = selected_matches[i]
 
-        # Look up from DB
-        db_match = df[df['Name'] == match_name]
-        if db_match.empty:
+        # Look up from both databases (try English first, then Danish)
+        db_match_en = df_en[df_en['Name'] == match_name]
+        db_match_dk = df_dk[df_dk['Name'] == match_name]
+
+        if not db_match_en.empty:
+            db_row = db_match_en.iloc[0]
+        elif not db_match_dk.empty:
+            db_row = db_match_dk.iloc[0]
+        else:
             continue
 
-        db_row = db_match.iloc[0]
         co2_val = db_row['Total kg CO2-eq/kg']
 
         grams = get_weight_in_grams(amt, unit, match_name)
