@@ -245,7 +245,6 @@ def save():
     total_co2 = float(request.form.get('total_co2', 0))
 
     ingredients_json = request.form.get('detailed_ingredients')
-    print(f"RAW ingredients_json (first 200 chars): {ingredients_json[:200] if ingredients_json else 'NONE'}")
     detailed_ingredients = json.loads(ingredients_json)
 
     nutrition_json = request.form.get('nutrition')
