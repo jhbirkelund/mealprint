@@ -23,11 +23,28 @@ df = pd.read_excel('climate_data.xlsx', sheet_name='DK')
 def get_processed_ingredients(raw_text_block):
     processed_list = []
     lines = raw_text_block.split('\n')
-    
+
+    # Informal units that quantulum3 doesn't recognize - map to grams
+    INFORMAL_UNITS = {
+        'handful': '30g',
+        'handfuls': '30g',
+        'sprinkling': '2g',
+        'sprinkle': '2g',
+    }
+
     for line in lines:
         line = line.strip()
         if not line: continue
-        
+
+        # Preprocess: replace informal units with gram equivalents
+        line_lower = line.lower()
+        for informal, replacement in INFORMAL_UNITS.items():
+            if informal in line_lower:
+                # Replace "1 handful" or "a handful" with "30g"
+                import re
+                line = re.sub(rf'(\d+\s*)?{informal}', replacement, line, flags=re.IGNORECASE)
+                break
+
         quants = parser.parse(line)
         if quants:
             amt = quants[0].value
@@ -57,25 +74,29 @@ def get_processed_ingredients(raw_text_block):
                 for nw in name_words:
                     if nw in search_query.lower():
                         score += 2  # Name word found in search
+                # Bonus: name starts with first search word (prefer "Pork, mince" over "Veal and pork, mince")
+                if search_words and name_lower.startswith(search_words[0]):
+                    score += 5
                 return score
 
             scored_matches = [(name, word_match_score(name)) for name in all_names]
             contains_matches = [name for name, score in scored_matches if score > 0]
-            contains_matches.sort(key=lambda n: word_match_score(n), reverse=True)
+            # Sort by score descending, then by name length (prefer shorter names as tiebreaker)
+            contains_matches.sort(key=lambda n: (-word_match_score(n), len(n)))
 
             # Step 2: Always add fuzzy matches too
             fuzzy_matches = process.extract(
                 search_query,
                 all_names,
                 scorer=fuzz.WRatio,
-                limit=10,
-                score_cutoff=50
+                limit=20,
+                score_cutoff=40
             )
             fuzzy_names = [match[0] for match in fuzzy_matches]
 
-            # Combine: word matches first, then fuzzy (no duplicates), limit to 10
-            candidate_names = contains_matches[:5] + [n for n in fuzzy_names if n not in contains_matches]
-            candidate_names = candidate_names[:10]
+            # Combine: word matches first, then fuzzy (no duplicates), limit to 15
+            candidate_names = contains_matches[:10] + [n for n in fuzzy_names if n not in contains_matches]
+            candidate_names = candidate_names[:15]
 
             # Determine confidence: word match exists OR fuzzy score > 70
             best_fuzzy_score = fuzzy_matches[0][1] if fuzzy_matches else 0

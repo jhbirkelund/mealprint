@@ -11,7 +11,10 @@
         "oz": 28.35,
         "drop": 0.05,
         "pinch": 0.3,
-        "piece": 100
+        "piece": 100,
+        "handful": 30,
+        "sprinkling": 2,
+        "quart": 946
     },
     "ingredient_weights": {
         "egg": 60,
@@ -47,6 +50,7 @@
         "l": "l",
         "pound": "lb",
         "pounds": "lb",
+        "pound-mass": "lb",
         "lb": "lb",
         "lbs": "lb",
         "ounce": "oz",
@@ -56,8 +60,15 @@
         "drops": "drop",
         "pinch": "pinch",
         "pinches": "pinch",
-        "dimensionless": "piece",
+        "dimensionless": "g",
         "piece": "piece",
-        "pieces": "piece"
+        "pieces": "piece",
+        "handful": "handful",
+        "handfuls": "handful",
+        "sprinkling": "sprinkling",
+        "sprinkle": "sprinkling",
+        "quart": "quart",
+        "quarts": "quart",
+        "qt": "quart"
     }
 }

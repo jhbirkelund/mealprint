@@ -31,41 +31,42 @@
 
             <div class="space-y-4" id="ingredients-list">
                 {% for item in ingredients %}
-                <div class="ingredient-row flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-2xl">
-                    <!-- Original text -->
-                    <div class="md:w-1/3">
-                        <p class="text-xs text-slate-400 mb-1">Original</p>
-                        <p class="text-sm text-slate-600">{{ item.original_line }}</p>
+                <div class="ingredient-row p-4 bg-slate-50 rounded-2xl">
+                    <!-- Original text (small, above) -->
+                    <p class="text-xs text-slate-400 mb-2">{{ item.original_line }}</p>
+
+                    <div class="flex flex-col md:flex-row md:items-center gap-3">
+                        <!-- Amount & Unit -->
+                        <div class="flex gap-2">
+                            <input type="number" name="amounts" value="{{ item.amount }}" step="any" required
+                                class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+                            <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                                {% for u in units %}
+                                <option value="{{ u }}" {% if u == item.unit %}selected{% endif %}>{{ u }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="hidden md:block text-slate-300">→</div>
+
+                        <!-- Match input with autocomplete -->
+                        <div class="flex-1 relative">
+                            <input type="text" name="selected_matches" autocomplete="off" required
+                                value="{% if item.candidates and item.confident %}{{ item.candidates[0] }}{% endif %}"
+                                data-candidates='{{ item.candidates | tojson if item.candidates else "[]" }}'
+                                placeholder="Search ingredient..."
+                                class="ingredient-input w-full px-3 py-2 rounded-xl border {% if item.confident %}border-slate-200{% else %}border-amber-300 bg-amber-50{% endif %} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+                            <div class="autocomplete-dropdown hidden absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"></div>
+                        </div>
+
+                        <!-- Remove button -->
+                        <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 transition p-1">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
                     </div>
-
-                    <!-- Amount & Unit -->
-                    <div class="flex gap-2 md:w-1/6">
-                        <input type="number" name="amounts" value="{{ item.amount }}" step="any" required
-                            class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
-                        <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
-                            {% for u in units %}
-                            <option value="{{ u }}" {% if u == item.unit %}selected{% endif %}>{{ u }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-
-                    <!-- Arrow -->
-                    <div class="hidden md:block text-slate-300">→</div>
-
-                    <!-- Match input with autocomplete -->
-                    <div class="flex-1">
-                        <input type="text" name="selected_matches" list="all-ingredients" required
-                            value="{% if item.candidates and item.confident %}{{ item.candidates[0] }}{% endif %}"
-                            placeholder="Search ingredient..."
-                            class="w-full px-3 py-2 rounded-xl border {% if item.confident %}border-slate-200{% else %}border-amber-300 bg-amber-50{% endif %} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
-                    </div>
-
-                    <!-- Remove button -->
-                    <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 transition p-1">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
                 </div>
                 {% endfor %}
             </div>
@@ -77,19 +78,93 @@
         </button>
     </form>
 
-    <!-- Datalist for all ingredients -->
-    <datalist id="all-ingredients">
-        {% for name in all_ingredients %}
-        <option value="{{ name }}">
-        {% endfor %}
-    </datalist>
-
 </div>
 
 <script>
 const availableUnits = {{ units | tojson }};
 const allIngredients = {{ all_ingredients | tojson }};
 let rowCounter = 1000;
+
+// Custom autocomplete functionality
+function setupAutocomplete() {
+    document.addEventListener('input', function(e) {
+        if (!e.target.matches('.ingredient-input')) return;
+
+        const input = e.target;
+        const dropdown = input.nextElementSibling;
+        const query = input.value.toLowerCase().trim();
+
+        if (query.length < 2) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        // Filter ingredients - show items containing ALL search words
+        const searchWords = query.split(/\s+/).filter(w => w.length > 0);
+        const matches = allIngredients.filter(name => {
+            const nameLower = name.toLowerCase();
+            return searchWords.every(word => nameLower.includes(word));
+        }).slice(0, 20); // Show up to 20 matches
+
+        if (matches.length === 0) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        dropdown.innerHTML = matches.map(name => `
+            <div class="autocomplete-item px-3 py-2 hover:bg-emerald-50 cursor-pointer text-sm text-slate-700">${name}</div>
+        `).join('');
+        dropdown.classList.remove('hidden');
+    });
+
+    // Handle click on dropdown item
+    document.addEventListener('click', function(e) {
+        if (e.target.matches('.autocomplete-item')) {
+            const input = e.target.closest('.relative').querySelector('.ingredient-input');
+            input.value = e.target.textContent;
+            e.target.closest('.autocomplete-dropdown').classList.add('hidden');
+        }
+        // Hide dropdowns when clicking outside
+        if (!e.target.matches('.ingredient-input') && !e.target.matches('.autocomplete-item')) {
+            document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.classList.add('hidden'));
+        }
+    });
+
+    // Show candidates dropdown on focus
+    document.addEventListener('focusin', function(e) {
+        if (e.target.matches('.ingredient-input')) {
+            const input = e.target;
+            const dropdown = input.nextElementSibling;
+
+            // Store original value in case user clicks away without typing
+            input.dataset.originalValue = input.value;
+            input.value = '';
+
+            // Show candidates if available
+            const candidates = JSON.parse(input.dataset.candidates || '[]');
+            if (candidates.length > 0) {
+                dropdown.innerHTML = candidates.map(name => `
+                    <div class="autocomplete-item px-3 py-2 hover:bg-emerald-50 cursor-pointer text-sm text-slate-700">${name}</div>
+                `).join('');
+                dropdown.classList.remove('hidden');
+            }
+        }
+    });
+
+    // Restore original value if user leaves without typing anything
+    document.addEventListener('focusout', function(e) {
+        if (e.target.matches('.ingredient-input')) {
+            // Small delay to allow click on dropdown item to register
+            setTimeout(() => {
+                if (e.target.value === '' && e.target.dataset.originalValue) {
+                    e.target.value = e.target.dataset.originalValue;
+                }
+            }, 150);
+        }
+    });
+}
+
+setupAutocomplete();
 
 function addIngredientRow() {
     rowCounter++;
@@ -98,29 +173,29 @@ function addIngredientRow() {
     const unitOptions = availableUnits.map(u => `<option value="${u}">${u}</option>`).join('');
 
     const row = document.createElement('div');
-    row.className = 'ingredient-row flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-2xl';
+    row.className = 'ingredient-row p-4 bg-slate-50 rounded-2xl';
     row.innerHTML = `
-        <div class="md:w-1/3">
-            <p class="text-xs text-slate-400 mb-1">New ingredient</p>
-            <p class="text-sm text-slate-400 italic">Added manually</p>
+        <p class="text-xs text-slate-400 mb-2">New ingredient (added manually)</p>
+        <div class="flex flex-col md:flex-row md:items-center gap-3">
+            <div class="flex gap-2">
+                <input type="number" name="amounts" value="100" step="any" required
+                    class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+                <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                    ${unitOptions}
+                </select>
+            </div>
+            <div class="hidden md:block text-slate-300">→</div>
+            <div class="flex-1 relative">
+                <input type="text" name="selected_matches" autocomplete="off" required placeholder="Search ingredient..."
+                    class="ingredient-input w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
+                <div class="autocomplete-dropdown hidden absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"></div>
+            </div>
+            <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 transition p-1">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
         </div>
-        <div class="flex gap-2 md:w-1/6">
-            <input type="number" name="amounts" value="100" step="any" required
-                class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
-            <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
-                ${unitOptions}
-            </select>
-        </div>
-        <div class="hidden md:block text-slate-300">→</div>
-        <div class="flex-1">
-            <input type="text" name="selected_matches" list="all-ingredients" required placeholder="Search ingredient..."
-                class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
-        </div>
-        <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 transition p-1">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
     `;
 
     list.appendChild(row);
