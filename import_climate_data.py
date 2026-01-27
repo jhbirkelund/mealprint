@@ -26,11 +26,15 @@ def clear_climate_ingredients():
 
 
 def import_danish_db():
-    """Import Danish climate database (highest confidence, has nutrition)."""
+    """Import Danish climate database (highest confidence, has nutrition).
+
+    Uses climate_data.xlsx which has BOTH English and Danish names.
+    """
     print("\n=== Importing Danish DB ===")
 
-    df = pd.read_excel('climate_data_DK.xlsx', sheet_name='DK')
-    print(f"Loaded {len(df)} rows from climate_data_DK.xlsx")
+    # Use climate_data.xlsx which has English 'Name' column + Danish 'Navn' column
+    df = pd.read_excel('climate_data.xlsx', sheet_name='DK')
+    print(f"Loaded {len(df)} rows from climate_data.xlsx (has EN + DK names)")
 
     conn = get_connection()
     cur = conn.cursor()
@@ -41,21 +45,23 @@ def import_danish_db():
     for _, row in df.iterrows():
         try:
             # Extract values, handling NaN
-            name_dk = str(row['Navn']) if pd.notna(row['Navn']) else None
-            co2 = float(row['Total kg CO2e/kg']) if pd.notna(row['Total kg CO2e/kg']) else None
+            # climate_data.xlsx has 'Name' (English) and 'Navn' (Danish)
+            name_en = str(row['Name']) if pd.notna(row.get('Name')) else None
+            name_dk = str(row['Navn']) if pd.notna(row.get('Navn')) else None
+            co2 = float(row['Total kg CO2-eq/kg']) if pd.notna(row.get('Total kg CO2-eq/kg')) else None
 
-            if not name_dk or co2 is None:
+            if (not name_en and not name_dk) or co2 is None:
                 skipped += 1
                 continue
 
-            # Nutrition data (Danish DB has these)
-            energy_kj = float(row['Energi (KJ/100 g)']) if pd.notna(row.get('Energi (KJ/100 g)')) else None
-            fat = float(row['Fedt (g/100 g)']) if pd.notna(row.get('Fedt (g/100 g)')) else None
-            carbs = float(row['Kulhydrat (g/100 g)']) if pd.notna(row.get('Kulhydrat (g/100 g)')) else None
+            # Nutrition data
+            energy_kj = float(row['Energy (KJ/100 g)']) if pd.notna(row.get('Energy (KJ/100 g)')) else None
+            fat = float(row['Fat (g/100 g)']) if pd.notna(row.get('Fat (g/100 g)')) else None
+            carbs = float(row['Carbohydrate (g/100 g)']) if pd.notna(row.get('Carbohydrate (g/100 g)')) else None
             protein = float(row['Protein (g/100 g)']) if pd.notna(row.get('Protein (g/100 g)')) else None
 
             # Category
-            category = str(row['Kategori']) if pd.notna(row.get('Kategori')) else None
+            category = str(row['Category']) if pd.notna(row.get('Category')) else None
             subcategory = str(row['DSK Kategori']) if pd.notna(row.get('DSK Kategori')) else None
 
             # Source ID
@@ -67,7 +73,7 @@ def import_danish_db():
                  category, subcategory, energy_kj, fat_g, carbs_g, protein_g)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
-                None,  # name_en (Danish DB doesn't have English names in this sheet)
+                name_en,  # Now we have English names!
                 name_dk,
                 None,  # name_fr
                 co2,

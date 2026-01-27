@@ -6,7 +6,7 @@ from quantulum3 import parser
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, calculate_rating
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
-from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db
+from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name
 
 app = Flask(__name__)
 
@@ -301,19 +301,42 @@ def calculate():
         unit = units[i]
         match_name = selected_matches[i]
 
-        # Look up CO2 values from both databases (try English first, then Danish)
-        db_match_en = df_en[df_en['Name'] == match_name]
-        db_match_dk = df_dk[df_dk['Name'] == match_name]
+        # Look up CO2 values from unified climate_ingredients table
+        # Uses waterfall: Danish (highest) -> Agribalyse (high) -> HESTIA (medium)
+        db_match = get_ingredient_by_name(match_name)
 
-        if not db_match_en.empty:
-            db_row = db_match_en.iloc[0]
-        elif not db_match_dk.empty:
-            db_row = db_match_dk.iloc[0]
+        # Fallback to old DataFrame lookup if not found in new table
+        if not db_match:
+            db_match_en = df_en[df_en['Name'] == match_name]
+            db_match_dk = df_dk[df_dk['Name'] == match_name]
+
+            if not db_match_en.empty:
+                db_row = db_match_en.iloc[0]
+                co2_val = db_row['Total kg CO2-eq/kg']
+                energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
+                fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
+                carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
+                protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
+                source_db = 'legacy'
+            elif not db_match_dk.empty:
+                db_row = db_match_dk.iloc[0]
+                co2_val = db_row['Total kg CO2-eq/kg']
+                energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
+                fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
+                carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
+                protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
+                source_db = 'legacy'
+            else:
+                # Skip if not found in any database
+                continue
         else:
-            # Skip if not found in either database
-            continue
-
-        co2_val = db_row['Total kg CO2-eq/kg']
+            # Use new climate_ingredients table (preferred)
+            co2_val = db_match['co2_per_kg']
+            energy_kj = db_match['energy_kj'] or 0
+            fat = db_match['fat_g'] or 0
+            carbs = db_match['carbs_g'] or 0
+            protein = db_match['protein_g'] or 0
+            source_db = db_match['source_db']
 
         # Calculate weight and impact
         grams = get_weight_in_grams(amt, unit, match_name)
@@ -321,22 +344,18 @@ def calculate():
         total_co2 += item_co2
 
         # Calculate nutrition (values are per 100g)
-        energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
-        fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
-        carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
-        protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
-
-        total_kcal += (grams / 100) * (energy_kj / 4.184)
-        total_fat += (grams / 100) * fat
-        total_carbs += (grams / 100) * carbs
-        total_protein += (grams / 100) * protein
+        total_kcal += (grams / 100) * (energy_kj / 4.184) if energy_kj else 0
+        total_fat += (grams / 100) * fat if fat else 0
+        total_carbs += (grams / 100) * carbs if carbs else 0
+        total_protein += (grams / 100) * protein if protein else 0
 
         detailed_ingredients.append({
             "item": match_name,
             "amount": amt,
             "unit": unit,
             "grams": round(grams, 1),
-            "co2": round(item_co2, 3)
+            "co2": round(item_co2, 3),
+            "source_db": source_db  # Track data source (danish/agribalyse/hestia/legacy)
         })
 
     # Get servings from the form and divide totals by servings
@@ -486,33 +505,50 @@ def update(recipe_id):
         unit = units[i]
         match_name = selected_matches[i]
 
-        # Look up from both databases (try English first, then Danish)
-        db_match_en = df_en[df_en['Name'] == match_name]
-        db_match_dk = df_dk[df_dk['Name'] == match_name]
+        # Look up CO2 values from unified climate_ingredients table
+        db_match = get_ingredient_by_name(match_name)
 
-        if not db_match_en.empty:
-            db_row = db_match_en.iloc[0]
-        elif not db_match_dk.empty:
-            db_row = db_match_dk.iloc[0]
+        # Fallback to old DataFrame lookup if not found in new table
+        if not db_match:
+            db_match_en = df_en[df_en['Name'] == match_name]
+            db_match_dk = df_dk[df_dk['Name'] == match_name]
+
+            if not db_match_en.empty:
+                db_row = db_match_en.iloc[0]
+                co2_val = db_row['Total kg CO2-eq/kg']
+                energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
+                fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
+                carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
+                protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
+                source_db = 'legacy'
+            elif not db_match_dk.empty:
+                db_row = db_match_dk.iloc[0]
+                co2_val = db_row['Total kg CO2-eq/kg']
+                energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
+                fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
+                carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
+                protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
+                source_db = 'legacy'
+            else:
+                continue
         else:
-            continue
-
-        co2_val = db_row['Total kg CO2-eq/kg']
+            # Use new climate_ingredients table (preferred)
+            co2_val = db_match['co2_per_kg']
+            energy_kj = db_match['energy_kj'] or 0
+            fat = db_match['fat_g'] or 0
+            carbs = db_match['carbs_g'] or 0
+            protein = db_match['protein_g'] or 0
+            source_db = db_match['source_db']
 
         grams = get_weight_in_grams(amt, unit, match_name)
         item_co2 = (grams / 1000) * co2_val
         total_co2 += item_co2
 
         # Nutrition
-        energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
-        fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
-        carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
-        protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
-
-        total_kcal += (grams / 100) * (energy_kj / 4.184)
-        total_fat += (grams / 100) * fat
-        total_carbs += (grams / 100) * carbs
-        total_protein += (grams / 100) * protein
+        total_kcal += (grams / 100) * (energy_kj / 4.184) if energy_kj else 0
+        total_fat += (grams / 100) * fat if fat else 0
+        total_carbs += (grams / 100) * carbs if carbs else 0
+        total_protein += (grams / 100) * protein if protein else 0
 
         detailed_ingredients.append({
             "item": match_name,
@@ -520,7 +556,8 @@ def update(recipe_id):
             "unit": unit,
             "match": match_name,
             "grams": float(round(grams, 1)),
-            "co2": float(round(item_co2, 3))
+            "co2": float(round(item_co2, 3)),
+            "source_db": source_db
         })
 
     # Calculate CO2 per serving and rating

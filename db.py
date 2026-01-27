@@ -1,5 +1,4 @@
 import os
-import json
 import uuid
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -40,14 +39,20 @@ def init_db():
     ''')
 
     # Migration: Add new columns if they don't exist (for existing databases)
-    try:
-        cur.execute('ALTER TABLE recipes ADD COLUMN og_image_url TEXT')
-    except:
-        pass  # Column already exists
-    try:
-        cur.execute('ALTER TABLE recipes ADD COLUMN site_rating TEXT')
-    except:
-        pass  # Column already exists
+    # Use IF NOT EXISTS pattern to avoid transaction failures
+    cur.execute('''
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='og_image_url') THEN
+                ALTER TABLE recipes ADD COLUMN og_image_url TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='site_rating') THEN
+                ALTER TABLE recipes ADD COLUMN site_rating TEXT;
+            END IF;
+        END $$;
+    ''')
 
     # Create recipe_ingredients table
     cur.execute('''
@@ -351,3 +356,165 @@ def delete_recipe_from_db(recipe_id):
     conn.commit()
     cur.close()
     conn.close()
+
+
+# =============================================================================
+# Climate Ingredients - Multi-Source Lookup Functions
+# =============================================================================
+
+def get_all_climate_ingredients():
+    """Get all ingredient names for autocomplete dropdown."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Get unique names from all sources, preferring Danish names for DK entries
+    cur.execute('''
+        SELECT DISTINCT
+            COALESCE(name_en, name_dk, name_fr) as display_name,
+            source_db,
+            confidence
+        FROM climate_ingredients
+        WHERE COALESCE(name_en, name_dk, name_fr) IS NOT NULL
+        ORDER BY display_name
+    ''')
+    results = cur.fetchall()
+
+    cur.close()
+    conn.close()
+
+    return [{'name': r[0], 'source': r[1], 'confidence': r[2]} for r in results]
+
+
+def search_climate_ingredients(search_term, limit=20):
+    """
+    Search climate_ingredients with waterfall priority:
+    1. Danish DB (highest confidence)
+    2. Agribalyse (high confidence)
+
+    Returns matches sorted by: confidence desc, relevance
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    search_pattern = f'%{search_term}%'
+
+    # Search across all name fields, prioritize by source confidence
+    cur.execute('''
+        SELECT
+            id,
+            COALESCE(name_en, name_dk, name_fr) as display_name,
+            name_en,
+            name_dk,
+            name_fr,
+            co2_per_kg,
+            source_db,
+            confidence,
+            category,
+            energy_kj,
+            fat_g,
+            carbs_g,
+            protein_g
+        FROM climate_ingredients
+        WHERE
+            name_en ILIKE %s OR
+            name_dk ILIKE %s OR
+            name_fr ILIKE %s
+        ORDER BY
+            CASE confidence
+                WHEN 'highest' THEN 1
+                WHEN 'high' THEN 2
+                WHEN 'medium' THEN 3
+                ELSE 4
+            END,
+            CASE
+                WHEN name_en ILIKE %s THEN 0
+                WHEN name_dk ILIKE %s THEN 0
+                ELSE 1
+            END,
+            LENGTH(COALESCE(name_en, name_dk, name_fr))
+        LIMIT %s
+    ''', (search_pattern, search_pattern, search_pattern,
+          search_term + '%', search_term + '%', limit))
+
+    results = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return [{
+        'id': r[0],
+        'name': r[1],
+        'name_en': r[2],
+        'name_dk': r[3],
+        'name_fr': r[4],
+        'co2_per_kg': r[5],
+        'source_db': r[6],
+        'confidence': r[7],
+        'category': r[8],
+        'energy_kj': r[9],
+        'fat_g': r[10],
+        'carbs_g': r[11],
+        'protein_g': r[12]
+    } for r in results]
+
+
+def get_ingredient_by_name(name):
+    """
+    Get a single ingredient by exact name match.
+    Uses waterfall: Danish first, then Agribalyse.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Try exact match, prioritize by confidence
+    cur.execute('''
+        SELECT
+            id,
+            COALESCE(name_en, name_dk, name_fr) as display_name,
+            name_en,
+            name_dk,
+            name_fr,
+            co2_per_kg,
+            source_db,
+            confidence,
+            category,
+            energy_kj,
+            fat_g,
+            carbs_g,
+            protein_g
+        FROM climate_ingredients
+        WHERE
+            name_en = %s OR
+            name_dk = %s OR
+            name_fr = %s
+        ORDER BY
+            CASE confidence
+                WHEN 'highest' THEN 1
+                WHEN 'high' THEN 2
+                WHEN 'medium' THEN 3
+                ELSE 4
+            END
+        LIMIT 1
+    ''', (name, name, name))
+
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+
+    if not result:
+        return None
+
+    return {
+        'id': result[0],
+        'name': result[1],
+        'name_en': result[2],
+        'name_dk': result[3],
+        'name_fr': result[4],
+        'co2_per_kg': result[5],
+        'source_db': result[6],
+        'confidence': result[7],
+        'category': result[8],
+        'energy_kj': result[9],
+        'fat_g': result[10],
+        'carbs_g': result[11],
+        'protein_g': result[12]
+    }
