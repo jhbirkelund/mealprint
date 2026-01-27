@@ -52,12 +52,24 @@ python auto_builder.py
 
 - **db.py** - Database module for PostgreSQL (Supabase):
   - `get_connection()` - Connect using DATABASE_URL env var
-  - `init_db()` - Create tables (recipes, recipe_ingredients, recipe_tags)
-  - `save_recipe_to_db()` - Insert new recipe, returns recipe_id
-  - `get_all_recipes()` - List all recipes with nested ingredients/tags
-  - `get_recipe_by_id()` - Get single recipe by UUID
+  - `init_db()` - Create tables (recipes, recipe_ingredients, recipe_tags, climate_ingredients)
+  - `save_recipe_to_db()` - Insert new recipe with original_line tracking, returns recipe_id
+  - `get_all_recipes()` - List all recipes with nested ingredients/tags (includes original_line, source_db)
+  - `get_recipe_by_id()` - Get single recipe by UUID (includes original_line, source_db)
   - `update_recipe_in_db()` - Update existing recipe
   - `delete_recipe_from_db()` - Delete recipe (CASCADE deletes related data)
+  - **Climate Ingredients (Multi-Source Engine):**
+    - `get_all_climate_ingredients()` - Get all ingredient names for autocomplete
+    - `search_climate_ingredients(term, limit)` - Search with waterfall priority (Danish → Agribalyse)
+    - `get_ingredient_by_name(name)` - Exact match lookup with confidence ranking
+
+- **import_climate_data.py** - Imports climate data into unified table:
+  - `clear_climate_ingredients()` - Clear existing data for fresh import
+  - `import_danish_db()` - Import from climate_data.xlsx (EN + DK names, nutrition)
+  - `import_agribalyse()` - Import from Agribalyse Excel file (FR + EN names, CO2 only)
+  - `get_stats()` - Show import statistics
+  - `dry_run()` - Test parsing without database connection
+  - Run: `python import_climate_data.py` (requires DATABASE_URL) or `python import_climate_data.py --dry-run`
 
 - **recipe_manager.py** - Shared utilities module containing:
   - `save_recipe()` - Persists recipes to recipes.json with full schema (id, tags, source, notes, original_ingredients, nutrition)
@@ -107,44 +119,78 @@ Uses Jinja2 templates with Tailwind CSS (via CDN) for a modern, responsive UI:
 
 ### Data Files
 
-- **climate_data.xlsx** - English environmental impact database with CO2-eq/kg values and nutrition data (Energy KJ, Fat, Carbs, Protein per 100g). Uses 'DK' sheet.
-- **climate_data_DK.xlsx** - Danish environmental impact database with same structure but Danish ingredient names (Navn, Total kg CO2e/kg, etc.). ~540 ingredients.
+- **climate_data.xlsx** - Danish climate database with BOTH English (Name) and Danish (Navn) columns, plus nutrition data. ~540 ingredients. Primary source for import.
+- **climate_data_DK.xlsx** - Danish-only version (legacy, used for DataFrame fallback)
+- **AGRIBALYSE3.2_Tableur produits alimentaires_PublieAOUT25.xlsx** - French/EU Agribalyse database with French + English names, CO2 only (no nutrition). ~2,500 ingredients.
 
 ### Database Schema (PostgreSQL)
 
 ```sql
 -- recipes table
 CREATE TABLE recipes (
-    id UUID PRIMARY KEY,
+    id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     total_co2 REAL,
     servings REAL,
     co2_per_serving REAL,
     source TEXT,
-    notes TEXT,
+    og_image_url TEXT,
+    site_rating TEXT,
     original_ingredients TEXT,
-    nutrition JSONB,
-    rating JSONB,
+    rating_label TEXT,
+    rating_color TEXT,
+    rating_emoji TEXT,
+    nutrition_kcal REAL,
+    nutrition_fat REAL,
+    nutrition_carbs REAL,
+    nutrition_protein REAL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- recipe_ingredients table
+-- recipe_ingredients table (with paper trail columns)
 CREATE TABLE recipe_ingredients (
     id SERIAL PRIMARY KEY,
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
-    item TEXT,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+    original_line TEXT,      -- Raw ingredient text for ML training
+    item TEXT,               -- Matched ingredient name
     amount REAL,
     unit TEXT,
     grams REAL,
-    co2 REAL
+    co2 REAL,
+    source_db TEXT           -- Which DB matched (danish/agribalyse/hestia/legacy)
 );
 
 -- recipe_tags table
 CREATE TABLE recipe_tags (
     id SERIAL PRIMARY KEY,
-    recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
     tag TEXT
 );
+
+-- climate_ingredients table (Multi-Source Engine)
+CREATE TABLE climate_ingredients (
+    id SERIAL PRIMARY KEY,
+    name_en TEXT,            -- English name
+    name_dk TEXT,            -- Danish name
+    name_fr TEXT,            -- French name (Agribalyse)
+    co2_per_kg REAL NOT NULL,
+    source_db TEXT NOT NULL, -- 'danish', 'agribalyse', 'hestia'
+    source_id TEXT,          -- Original ID in source database
+    confidence TEXT DEFAULT 'high',  -- 'highest', 'high', 'medium'
+    category TEXT,
+    subcategory TEXT,
+    energy_kj REAL,
+    fat_g REAL,
+    carbs_g REAL,
+    protein_g REAL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Indexes for fast lookups
+CREATE INDEX idx_climate_name_en ON climate_ingredients(name_en);
+CREATE INDEX idx_climate_name_dk ON climate_ingredients(name_dk);
+CREATE INDEX idx_climate_name_fr ON climate_ingredients(name_fr);
+CREATE INDEX idx_climate_source ON climate_ingredients(source_db);
 ```
 
 ### Config Files (config/)
@@ -165,20 +211,99 @@ CREATE TABLE recipe_tags (
 - openpyxl - Excel file reading
 
 ## Vision & Long-term Goals
-- **Project Goal:** Automate recipe carbon footprinting to empower sustainable food choices.
-- **Next Horizon:** Multi-user web app with footprint ratings and meal recommendations.
-- **Future Integration:** Building out API capabilities and automated data flows.
 
-### Planned Improvements
-- **Language tag for recipes** - Store language (DK, EN) with each recipe for filtering
-- **Danish language site** - Full Danish UI with language switcher (EN/DK toggle)
-- **Expand Danish units and aliases** - More Danish unit mappings and ingredient_aliases_DK.json
-- **Percentile-based ratings** - Compare recipes within categories (e.g., "low for a dessert")
-- AI-powered ingredient matching (LLM to match "lean ground beef" → "Beef, minced" with context understanding)
-- Admin UI for editing config files (units.json, ingredient_aliases.json) without touching code
-- User authentication for personal recipe collections
+**The Pivot: "Metacritic for Sustainable Cooking"**
+
+Mealprint is pivoting from a simple recipe calculator to a high-volume, searchable index of recipes ranked by carbon impact. Think Metacritic, but for sustainable cooking.
+
+- **Primary Goal:** Build the largest searchable database of carbon-rated recipes
+- **Value Proposition:** Users discover low-carbon recipes from any source, with transparent CO2 ratings
+- **Content Strategy:** Batch scrape recipes, auto-calculate CO2, human review for quality
+
+### Multi-Source Climate Engine
+
+The app now uses a unified `climate_ingredients` table with waterfall lookup across multiple databases:
+
+| Priority | Database | Region | Confidence | Ingredients |
+|----------|----------|--------|------------|-------------|
+| 1st | Den Store Klimadatabase | Denmark | Highest | ~500 (with nutrition) |
+| 2nd | Agribalyse (ADEME) | France/EU | High | ~2,500 (CO2 only) |
+| 3rd | HESTIA/Oxford | Global | Medium | (Future) |
+
+**Waterfall Logic:** Always try Danish first (highest confidence), fall back to Agribalyse, then HESTIA, then legacy DataFrame.
+
+### Paper Trail for ML Training
+
+Each ingredient match now stores:
+- `original_line` - The raw ingredient text from the recipe (e.g., "2 cups diced tomatoes")
+- `source_db` - Which database the match came from (danish/agribalyse/hestia/legacy)
+
+This enables future ML training to improve ingredient matching by learning from human corrections.
+
+---
+
+## Next Steps (Implementation Roadmap)
+
+### Phase 2: Bulk Content Factory (NOT STARTED)
+
+**Goal:** Batch scrape recipes with auto-matching
+
+1. **Extract shared matching logic** - Create `ingredient_matcher.py` from manual_app.py:57-164
+2. **Create bulk scraper** (`bulk_scraper.py`):
+   - Accept URL list → create import job → process each URL
+   - Rate limiting: 3 seconds between requests
+   - Auto-approval: >= 75% confidence on ALL ingredients → publish
+   - Needs review: Any ingredient < 75% → save unpublished
+3. **Add database tables:**
+   ```sql
+   CREATE TABLE import_jobs (
+       id UUID PRIMARY KEY,
+       status TEXT DEFAULT 'pending',
+       total_urls INTEGER,
+       processed_count INTEGER DEFAULT 0,
+       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+   );
+
+   CREATE TABLE import_items (
+       id SERIAL PRIMARY KEY,
+       job_id UUID REFERENCES import_jobs(id),
+       url TEXT NOT NULL,
+       status TEXT DEFAULT 'pending',
+       recipe_id UUID REFERENCES recipes(id),
+       error_message TEXT
+   );
+   ```
+4. **Add recipe columns:** `import_job_id`, `is_published`, `language`, `domain`
+
+### Phase 3: Admin Review UI (NOT STARTED)
+
+New routes:
+- `/admin/import` - Submit URLs (textarea, one per line)
+- `/admin/jobs` - List import jobs with status
+- `/admin/review` - Queue of unpublished recipes needing review
+- `/admin/review/<id>/approve` - Publish recipe
+
+### Phase 4: Discovery Portal (NOT STARTED)
+
+- `/discover` - Public searchable recipe index
+- Filters: CO2 rating, tags, language, domain
+- Pagination (fix N+1 query problem)
+- "Inspiration cards" with image, title, CO2 badge, source link
+
+### Future Enhancements
+- **HESTIA database integration** - Global fallback for exotic ingredients
+- **LLM fallback** - For < 40% confidence matches, call Claude API
+- **Learn from corrections** - Log when users change matches, suggest new aliases
+- **Percentile-based ratings** - "Low for a dessert" context-aware ratings
+- **Danish language UI** - Full i18n with language switcher
+
+---
 
 ### Recently Completed
+- **Multi-Source Climate Engine** - Unified `climate_ingredients` table with 2,957 ingredients (499 Danish + 2,458 Agribalyse), waterfall lookup by confidence
+- **Paper trail for ML training** - Each ingredient stores `original_line` (raw text) and `source_db` (data source) for future ML training
+- **Import script** (`import_climate_data.py`) - Imports Danish DB and Agribalyse into unified table, supports `--dry-run` mode
+- **Removed recipe instructions** - Copyright-safe: only store og_image_url and site_rating, not full instructions
 - **Danish language support** - dual database (EN + DK), auto-detects language from æøå characters and Danish words, Danish unit preprocessing (spsk, tsk, stk, knivspids)
 - **Custom autocomplete dropdown** - replaced browser datalist on summary page; shows candidates on focus, searches full DB on type, displays up to 20 results
 - **Additional units** - handful (30g), sprinkling (2g), quart (946ml), fixed pound-mass mapping for quantulum3
