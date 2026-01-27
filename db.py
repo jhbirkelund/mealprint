@@ -59,12 +59,29 @@ def init_db():
         CREATE TABLE IF NOT EXISTS recipe_ingredients (
             id SERIAL PRIMARY KEY,
             recipe_id TEXT REFERENCES recipes(id) ON DELETE CASCADE,
+            original_line TEXT,
             item TEXT,
             amount REAL,
             unit TEXT,
             grams REAL,
-            co2 REAL
+            co2 REAL,
+            source_db TEXT
         )
+    ''')
+
+    # Migration: Add new columns if they don't exist
+    cur.execute('''
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipe_ingredients' AND column_name='original_line') THEN
+                ALTER TABLE recipe_ingredients ADD COLUMN original_line TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipe_ingredients' AND column_name='source_db') THEN
+                ALTER TABLE recipe_ingredients ADD COLUMN source_db TEXT;
+            END IF;
+        END $$;
     ''')
 
     # Create recipe_tags table
@@ -144,15 +161,17 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
     # Insert ingredients
     for ing in ingredients:
         cur.execute('''
-            INSERT INTO recipe_ingredients (recipe_id, item, amount, unit, grams, co2)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             recipe_id,
+            ing.get('original_line', ''),
             ing.get('item', ''),
             ing.get('amount', 0),
             ing.get('unit', 'g'),
             ing.get('grams', 0),
-            ing.get('co2', 0)
+            ing.get('co2', 0),
+            ing.get('source_db', '')
         ))
 
     # Insert tags
@@ -180,8 +199,8 @@ def get_all_recipes():
     # Convert to list of dicts with nested structures (matching JSON format)
     result = []
     for r in recipes:
-        # Get ingredients for this recipe
-        cur.execute('SELECT item, amount, unit, grams, co2 FROM recipe_ingredients WHERE recipe_id = %s', (r['id'],))
+        # Get ingredients for this recipe (including original_line and source_db for paper trail)
+        cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db FROM recipe_ingredients WHERE recipe_id = %s', (r['id'],))
         ingredients = [dict(ing) for ing in cur.fetchall()]
 
         # Get tags for this recipe
@@ -232,8 +251,8 @@ def get_recipe_by_id(recipe_id):
         conn.close()
         return None
 
-    # Get ingredients
-    cur.execute('SELECT item, amount, unit, grams, co2 FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
+    # Get ingredients (including original_line and source_db for paper trail)
+    cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
     ingredients = [dict(ing) for ing in cur.fetchall()]
 
     # Get tags
@@ -322,15 +341,17 @@ def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings
     # Insert new ingredients
     for ing in ingredients:
         cur.execute('''
-            INSERT INTO recipe_ingredients (recipe_id, item, amount, unit, grams, co2)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             recipe_id,
+            ing.get('original_line', ''),
             ing.get('item', ''),
             ing.get('amount', 0),
             ing.get('unit', 'g'),
             ing.get('grams', 0),
-            ing.get('co2', 0)
+            ing.get('co2', 0),
+            ing.get('source_db', '')
         ))
 
     # Insert new tags

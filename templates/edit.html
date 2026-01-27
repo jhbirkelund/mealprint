@@ -45,6 +45,8 @@
             <div class="space-y-4" id="ingredients-list">
                 {% for ing in recipe.ingredients %}
                 <div class="ingredient-row flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-2xl">
+                    <!-- Hidden original_line for paper trail -->
+                    <input type="hidden" name="original_lines" value="{{ ing.original_line or '' }}">
                     <!-- Amount & Unit -->
                     <div class="flex gap-2">
                         <input type="number" name="amounts" value="{{ ing.amount }}" step="any" required
@@ -148,6 +150,7 @@ function addIngredientRow() {
     const row = document.createElement('div');
     row.className = 'ingredient-row flex flex-col md:flex-row md:items-center gap-3 p-4 bg-slate-50 rounded-2xl';
     row.innerHTML = `
+        <input type="hidden" name="original_lines" value="(manually added during edit)">
         <div class="flex gap-2">
             <input type="number" name="amounts" value="100" step="any" required
                 class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">

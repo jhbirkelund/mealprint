@@ -33,8 +33,9 @@
             <div class="space-y-4" id="ingredients-list">
                 {% for item in ingredients %}
                 <div class="ingredient-row p-4 bg-slate-50 rounded-2xl">
-                    <!-- Original text (small, above) -->
+                    <!-- Original text (small, above) - also passed as hidden field for paper trail -->
                     <p class="text-xs text-slate-400 mb-2">{{ item.original_line }}</p>
+                    <input type="hidden" name="original_lines" value="{{ item.original_line }}">
 
                     <div class="flex flex-col md:flex-row md:items-center gap-3">
                         <!-- Amount & Unit -->
@@ -177,6 +178,7 @@ function addIngredientRow() {
     row.className = 'ingredient-row p-4 bg-slate-50 rounded-2xl';
     row.innerHTML = `
         <p class="text-xs text-slate-400 mb-2">New ingredient (added manually)</p>
+        <input type="hidden" name="original_lines" value="(manually added)">
         <div class="flex flex-col md:flex-row md:items-center gap-3">
             <div class="flex gap-2">
                 <input type="number" name="amounts" value="100" step="any" required

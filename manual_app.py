@@ -287,6 +287,7 @@ def calculate():
     amounts = request.form.getlist('amounts')
     units = request.form.getlist('units')
     selected_matches = request.form.getlist('selected_matches')
+    original_lines = request.form.getlist('original_lines')
 
     total_co2 = 0
     total_kcal = 0
@@ -350,6 +351,7 @@ def calculate():
         total_protein += (grams / 100) * protein if protein else 0
 
         detailed_ingredients.append({
+            "original_line": original_lines[i] if i < len(original_lines) else '',
             "item": match_name,
             "amount": amt,
             "unit": unit,
@@ -481,6 +483,7 @@ def update(recipe_id):
     amounts = request.form.getlist('amounts')
     units = request.form.getlist('units')
     selected_matches = request.form.getlist('selected_matches')
+    original_lines = request.form.getlist('original_lines')
 
     # Parse tags
     tags_raw = request.form.get('tags', '')
@@ -551,6 +554,7 @@ def update(recipe_id):
         total_protein += (grams / 100) * protein if protein else 0
 
         detailed_ingredients.append({
+            "original_line": original_lines[i] if i < len(original_lines) else '',
             "item": match_name,
             "amount": float(amt),
             "unit": unit,
