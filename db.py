@@ -71,6 +71,34 @@ def init_db():
         )
     ''')
 
+    # Create unified climate_ingredients table (Multi-Source Engine)
+    # Sources: danish (highest), agribalyse (high), hestia (medium)
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS climate_ingredients (
+            id SERIAL PRIMARY KEY,
+            name_en TEXT,
+            name_dk TEXT,
+            name_fr TEXT,
+            co2_per_kg REAL NOT NULL,
+            source_db TEXT NOT NULL,
+            source_id TEXT,
+            confidence TEXT DEFAULT 'high',
+            category TEXT,
+            subcategory TEXT,
+            energy_kj REAL,
+            fat_g REAL,
+            carbs_g REAL,
+            protein_g REAL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Create indexes for fast ingredient lookups
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_climate_name_en ON climate_ingredients(name_en)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_climate_name_dk ON climate_ingredients(name_dk)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_climate_name_fr ON climate_ingredients(name_fr)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_climate_source ON climate_ingredients(source_db)')
+
     conn.commit()
     cur.close()
     conn.close()
