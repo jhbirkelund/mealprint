@@ -171,24 +171,66 @@ def home():
 def scrape():
     url = request.form.get('recipe_url')
     try:
+        import re
+        import urllib.request
+        from html.parser import HTMLParser
+
         scraper = scrape_me(url)
         recipe_name = scraper.title() or ""
         servings = scraper.yields() or "1"
         # Extract just the number from yields (e.g., "4 servings" -> "4")
-        import re
         servings_match = re.search(r'\d+', str(servings))
         servings = servings_match.group() if servings_match else "1"
         ingredients_list = scraper.ingredients()
         ingredients = "\n".join(ingredients_list)
         original_ingredients = "\n".join(ingredients_list)
-        instructions = scraper.instructions() or ""
+
+        # Extract site rating from recipe_scrapers
+        site_rating = ""
+        try:
+            ratings = scraper.ratings()
+            if ratings:
+                # ratings() returns a dict with 'rating' and 'count' keys
+                if isinstance(ratings, dict):
+                    rating_val = ratings.get('rating') or ratings.get('value')
+                    if rating_val:
+                        site_rating = str(rating_val)
+                else:
+                    site_rating = str(ratings)
+        except:
+            pass
+
+        # Extract og:image from the page
+        og_image_url = ""
+        try:
+            # Simple parser to extract og:image meta tag
+            class OGImageParser(HTMLParser):
+                def __init__(self):
+                    super().__init__()
+                    self.og_image = ""
+
+                def handle_starttag(self, tag, attrs):
+                    if tag == 'meta':
+                        attrs_dict = dict(attrs)
+                        if attrs_dict.get('property') == 'og:image' or attrs_dict.get('name') == 'og:image':
+                            self.og_image = attrs_dict.get('content', '')
+
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=10) as response:
+                html = response.read().decode('utf-8', errors='ignore')
+                parser = OGImageParser()
+                parser.feed(html)
+                og_image_url = parser.og_image
+        except:
+            pass
 
         return render_template('home.html',
             recipe_name=recipe_name,
             servings=servings,
             ingredients=ingredients,
             source=url,
-            notes=instructions,
+            og_image_url=og_image_url,
+            site_rating=site_rating,
             original_ingredients=original_ingredients
         )
     except Exception as e:
@@ -200,7 +242,8 @@ def summary():
     servings = request.form.get('servings')
     raw_ingredients = request.form.get('ingredients')
     source = request.form.get('source', '')
-    notes = request.form.get('notes', '')
+    og_image_url = request.form.get('og_image_url', '')
+    site_rating = request.form.get('site_rating', '')
     original_ingredients = request.form.get('original_ingredients', '')
 
     # If no original_ingredients provided (manual entry), use raw_ingredients
@@ -225,7 +268,8 @@ def summary():
         recipe_name=recipe_name,
         servings=servings,
         source=source,
-        notes=notes,
+        og_image_url=og_image_url,
+        site_rating=site_rating,
         original_ingredients=original_ingredients,
         ingredients=ingredients_with_matches,
         all_ingredients=all_ingredients,
@@ -237,7 +281,8 @@ def calculate():
     # Get lists of all submitted data
     recipe_name = request.form.get('recipe_name')
     source = request.form.get('source', '')
-    notes = request.form.get('notes', '')
+    og_image_url = request.form.get('og_image_url', '')
+    site_rating = request.form.get('site_rating', '')
     original_ingredients = request.form.get('original_ingredients', '')
     amounts = request.form.getlist('amounts')
     units = request.form.getlist('units')
@@ -318,7 +363,8 @@ def calculate():
         nutrition=nutrition,
         ingredients=detailed_ingredients,
         source=source,
-        notes=notes,
+        og_image_url=og_image_url,
+        site_rating=site_rating,
         original_ingredients=original_ingredients
     )
 
@@ -338,9 +384,10 @@ def save():
     tags_raw = request.form.get('tags', '')
     tags = [tag.strip() for tag in tags_raw.split(',') if tag.strip()]
 
-    # Get source, notes, and original ingredients
+    # Get source, og_image_url, site_rating, and original ingredients
     source = request.form.get('source', '')
-    notes = request.form.get('notes', '')
+    og_image_url = request.form.get('og_image_url', '')
+    site_rating = request.form.get('site_rating', '')
     original_ingredients = request.form.get('original_ingredients', '')
 
     # Calculate rating
@@ -348,7 +395,7 @@ def save():
     rating = calculate_rating(co2_per_serving)
 
     # Save to database
-    recipe_id = save_recipe_to_db(recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
+    recipe_id = save_recipe_to_db(recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, og_image_url, site_rating, original_ingredients, rating)
 
     # Redirect to the new recipe
     return redirect(f'/recipe/{recipe_id}')
@@ -420,9 +467,10 @@ def update(recipe_id):
     tags_raw = request.form.get('tags', '')
     tags = [tag.strip() for tag in tags_raw.split(',') if tag.strip()]
 
-    # Get source, notes, and original ingredients
+    # Get source, og_image_url, site_rating, and original ingredients
     source = request.form.get('source', '')
-    notes = request.form.get('notes', '')
+    og_image_url = request.form.get('og_image_url', '')
+    site_rating = request.form.get('site_rating', '')
     original_ingredients = request.form.get('original_ingredients', '')
 
     # Recalculate CO2 and nutrition
@@ -490,7 +538,7 @@ def update(recipe_id):
     }
 
     # Update in database
-    update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, notes, original_ingredients, rating)
+    update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, og_image_url, site_rating, original_ingredients, rating)
 
     # Redirect to the recipe page
     return redirect(f'/recipe/{recipe_id}')

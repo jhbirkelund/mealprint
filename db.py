@@ -25,7 +25,8 @@ def init_db():
             servings REAL,
             co2_per_serving REAL,
             source TEXT,
-            notes TEXT,
+            og_image_url TEXT,
+            site_rating TEXT,
             original_ingredients TEXT,
             rating_label TEXT,
             rating_color TEXT,
@@ -37,6 +38,16 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+
+    # Migration: Add new columns if they don't exist (for existing databases)
+    try:
+        cur.execute('ALTER TABLE recipes ADD COLUMN og_image_url TEXT')
+    except:
+        pass  # Column already exists
+    try:
+        cur.execute('ALTER TABLE recipes ADD COLUMN site_rating TEXT')
+    except:
+        pass  # Column already exists
 
     # Create recipe_ingredients table
     cur.execute('''
@@ -64,7 +75,7 @@ def init_db():
     cur.close()
     conn.close()
 
-def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=None, tags=None, source=None, notes=None, original_ingredients=None, rating=None):
+def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=None, tags=None, source=None, og_image_url=None, site_rating=None, original_ingredients=None, rating=None):
     """Save a recipe to the database."""
     recipe_id = str(uuid.uuid4())
     co2_per_serving = round(total_co2 / servings, 3) if servings > 0 else 0
@@ -74,10 +85,10 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
 
     # Insert recipe
     cur.execute('''
-        INSERT INTO recipes (id, name, total_co2, servings, co2_per_serving, source, notes, original_ingredients,
+        INSERT INTO recipes (id, name, total_co2, servings, co2_per_serving, source, og_image_url, site_rating, original_ingredients,
                             rating_label, rating_color, rating_emoji,
                             nutrition_kcal, nutrition_fat, nutrition_carbs, nutrition_protein)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ''', (
         recipe_id,
         recipe_name,
@@ -85,7 +96,8 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
         servings,
         co2_per_serving,
         source or '',
-        notes or '',
+        og_image_url or '',
+        site_rating or '',
         original_ingredients or '',
         rating['label'] if rating else '',
         rating['color'] if rating else '',
@@ -150,7 +162,8 @@ def get_all_recipes():
             'servings': r['servings'],
             'co2_per_serving': r['co2_per_serving'],
             'source': r['source'],
-            'notes': r['notes'],
+            'og_image_url': r.get('og_image_url', ''),
+            'site_rating': r.get('site_rating', ''),
             'original_ingredients': r['original_ingredients'],
             'rating': {
                 'label': r['rating_label'],
@@ -204,7 +217,8 @@ def get_recipe_by_id(recipe_id):
         'servings': r['servings'],
         'co2_per_serving': r['co2_per_serving'],
         'source': r['source'],
-        'notes': r['notes'],
+        'og_image_url': r.get('og_image_url', ''),
+        'site_rating': r.get('site_rating', ''),
         'original_ingredients': r['original_ingredients'],
         'rating': {
             'label': r['rating_label'],
@@ -223,7 +237,7 @@ def get_recipe_by_id(recipe_id):
         }
     }
 
-def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings, nutrition=None, tags=None, source=None, notes=None, original_ingredients=None, rating=None):
+def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings, nutrition=None, tags=None, source=None, og_image_url=None, site_rating=None, original_ingredients=None, rating=None):
     """Update an existing recipe in the database."""
     co2_per_serving = round(total_co2 / servings, 3) if servings > 0 else 0
 
@@ -238,7 +252,8 @@ def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings
             servings = %s,
             co2_per_serving = %s,
             source = %s,
-            notes = %s,
+            og_image_url = %s,
+            site_rating = %s,
             original_ingredients = %s,
             rating_label = %s,
             rating_color = %s,
@@ -254,7 +269,8 @@ def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings
         servings,
         co2_per_serving,
         source or '',
-        notes or '',
+        og_image_url or '',
+        site_rating or '',
         original_ingredients or '',
         rating['label'] if rating else '',
         rating['color'] if rating else '',

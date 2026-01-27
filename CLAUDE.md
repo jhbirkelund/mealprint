@@ -48,7 +48,7 @@ python auto_builder.py
   - `/delete/<uuid>` - Deletes recipe (with confirmation)
   - `/about-rating` - Explains the carbon footprint rating system
 
-  Uses Jinja2 templates with Tailwind CSS. Ingredient matching uses a hybrid approach: token-based word matching + rapidfuzz fuzzy matching, displaying multiple candidates in a dropdown for user selection.
+  Uses Jinja2 templates with Tailwind CSS. Ingredient matching uses a hybrid approach: token-based word matching + rapidfuzz fuzzy matching, displaying multiple candidates in a dropdown for user selection. Supports both English and Danish recipes with automatic language detection.
 
 - **db.py** - Database module for PostgreSQL (Supabase):
   - `get_connection()` - Connect using DATABASE_URL env var
@@ -77,7 +77,7 @@ Uses Jinja2 templates with Tailwind CSS (via CDN) for a modern, responsive UI:
 
 - **base.html** - Shared layout with Tailwind, Inter font, navigation bar
 - **home.html** - Recipe input page (URL scraping + manual entry)
-- **summary.html** - Ingredient correction with dropdowns and "Add ingredient"
+- **summary.html** - Ingredient matching with custom autocomplete dropdown (shows candidates on focus, searches full DB on type)
 - **calculate.html** - Results preview with CO2 impact before saving
 - **recipe.html** - Individual recipe view with Bento Box layout
 - **history.html** - Recipe list with grid cards
@@ -92,17 +92,23 @@ Uses Jinja2 templates with Tailwind CSS (via CDN) for a modern, responsive UI:
 - CO2 color coding: emerald (<1.0), amber (1.0-1.8), rose (>1.8 kg)
 - Rating badges: `bg-emerald-100 text-emerald-900` (darker text for accessibility)
 
+**Template Patterns:**
+- Pass complex data to hidden form fields using single-quoted attributes: `value='{{ data | tojson }}'` (single quotes avoid conflicts with JSON's double quotes)
+- Custom autocomplete: use `.ingredient-input` class with adjacent `.autocomplete-dropdown` div; JS handles filtering and selection
+
 ### Data Flow
 
 1. **Input**: User enters recipe manually OR scrapes from URL (extracts title, servings, ingredients, instructions)
-2. **Parse**: quantulum3 extracts quantities and units from ingredient text
-3. **Match**: Hybrid matching (token-based + rapidfuzz) suggests DB ingredients; user confirms/corrects
-4. **Calculate**: Convert to grams → lookup CO2-eq/kg and nutrition → sum totals
-5. **Save**: Store to PostgreSQL database with UUID, tags, source, notes, original ingredients
+2. **Detect Language**: Auto-detect Danish (æøå, common words) vs English
+3. **Parse**: Preprocess informal units (handful, sprinkling, Danish spsk/tsk) → quantulum3 extracts quantities and units
+4. **Match**: Hybrid matching (token-based + rapidfuzz) against language-appropriate DB; user confirms/corrects via autocomplete
+5. **Calculate**: Convert to grams → lookup CO2-eq/kg and nutrition → sum totals
+6. **Save**: Store to PostgreSQL database with UUID, tags, source, notes, original ingredients
 
 ### Data Files
 
-- **climate_data.xlsx** - Environmental impact database with CO2-eq/kg values and nutrition data (Energy KJ, Fat, Carbs, Protein per 100g). Uses 'DK' sheet.
+- **climate_data.xlsx** - English environmental impact database with CO2-eq/kg values and nutrition data (Energy KJ, Fat, Carbs, Protein per 100g). Uses 'DK' sheet.
+- **climate_data_DK.xlsx** - Danish environmental impact database with same structure but Danish ingredient names (Navn, Total kg CO2e/kg, etc.). ~540 ingredients.
 
 ### Database Schema (PostgreSQL)
 
@@ -143,8 +149,8 @@ CREATE TABLE recipe_tags (
 
 ### Config Files (config/)
 
-- **units.json** - Unit conversions (g, kg, lb, oz, cup, etc.), ingredient weights (egg, onion, etc.), and unit name mappings
-- **ingredient_aliases.json** - Maps common recipe terms to DB names (e.g., "ground beef" → "Beef, mince", dried herbs → "Basil, dried")
+- **units.json** - Unit conversions (g, kg, lb, oz, cup, handful, sprinkling, quart, etc.), ingredient weights (egg, onion, etc.), and unit name mappings (including "pound-mass" → "lb" for quantulum3 compatibility)
+- **ingredient_aliases.json** - Maps common recipe terms to DB names (e.g., "ground beef" → "Beef, mince", "shallots" → "Onion, raw", dried herbs → "Basil, dried")
 
 ## Dependencies
 
@@ -164,18 +170,30 @@ CREATE TABLE recipe_tags (
 - **Future Integration:** Building out API capabilities and automated data flows.
 
 ### Planned Improvements
+- **Language tag for recipes** - Store language (DK, EN) with each recipe for filtering
+- **Danish language site** - Full Danish UI with language switcher (EN/DK toggle)
+- **Expand Danish units and aliases** - More Danish unit mappings and ingredient_aliases_DK.json
 - **Percentile-based ratings** - Compare recipes within categories (e.g., "low for a dessert")
 - AI-powered ingredient matching (LLM to match "lean ground beef" → "Beef, minced" with context understanding)
 - Admin UI for editing config files (units.json, ingredient_aliases.json) without touching code
 - User authentication for personal recipe collections
 
 ### Recently Completed
+- **Danish language support** - dual database (EN + DK), auto-detects language from æøå characters and Danish words, Danish unit preprocessing (spsk, tsk, stk, knivspids)
+- **Custom autocomplete dropdown** - replaced browser datalist on summary page; shows candidates on focus, searches full DB on type, displays up to 20 results
+- **Additional units** - handful (30g), sprinkling (2g), quart (946ml), fixed pound-mass mapping for quantulum3
+- **Additional ingredient aliases** - shallots, double cream, tomato purée/pureé variants, whole milk
+- **Improved ingredient matching** - bonus score for names starting with search term
+- **Search and tag filtering on Recipes page** - search by name, filter by tags with "Show All" button
+- **Info icon on recipe/calculate pages** - links to about-rating page explaining the rating system
+- **Fixed JSON form encoding** - using single-quoted HTML attributes to avoid conflicts with JSON double quotes
 - **Production deployment on Render** with auto-deploy from GitHub
 - **PostgreSQL database on Supabase** replacing local JSON storage
 - **Jinja2 templates with Tailwind CSS** replacing f-string HTML generation
 - **Premium dashboard design** with Bento Box layout, big CO2 numbers, nutrition stats
 - **Accessibility improvements** - better contrast (text-slate-900), card borders, darker badge text
 - **Interactive recipe view** - checkboxes for ingredients/steps with strike-through effect
+- **Full database search on summary page** - users can search entire climate DB, not just suggested matches
 - UUID-based recipe identification (multi-user ready)
 - Tags system for recipe categorization
 - Source field (auto-populated from scraped URLs)

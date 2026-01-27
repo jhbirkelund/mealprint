@@ -10,35 +10,59 @@
         <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">{{ recipe_name }}</h1>
     </div>
 
-    <!-- Impact Card -->
+    <!-- Impact Card with Image -->
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
-        <p class="text-slate-400 text-sm font-medium uppercase tracking-wide mb-2">Carbon Impact</p>
-        <div class="flex items-baseline gap-3">
-            <span class="text-6xl md:text-7xl font-bold tracking-tight
-                {% if co2_per_serving < 1.0 %}text-emerald-500
-                {% elif co2_per_serving < 1.8 %}text-amber-500
-                {% else %}text-rose-500{% endif %}">
-                {{ "%.2f"|format(co2_per_serving) }}
-            </span>
-            <span class="text-slate-400 text-xl">kg CO₂ per serving</span>
+        <div class="flex flex-col md:flex-row gap-8">
+            <!-- CO2 Impact (left side) -->
+            <div class="flex-1">
+                <p class="text-slate-400 text-sm font-medium uppercase tracking-wide mb-2">Carbon Impact</p>
+                <div class="flex items-baseline gap-3">
+                    <span class="text-6xl md:text-7xl font-bold tracking-tight
+                        {% if co2_per_serving < 1.0 %}text-emerald-500
+                        {% elif co2_per_serving < 1.8 %}text-amber-500
+                        {% else %}text-rose-500{% endif %}">
+                        {{ "%.2f"|format(co2_per_serving) }}
+                    </span>
+                    <span class="text-slate-400 text-xl">kg CO₂ per serving</span>
+                </div>
+                <div class="mt-6 flex items-center gap-3">
+                    <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium
+                        {% if 'Low' in rating.label %}bg-emerald-100 text-emerald-900
+                        {% elif 'Medium' in rating.label %}bg-amber-100 text-amber-900
+                        {% else %}bg-rose-100 text-rose-900{% endif %}">
+                        {{ rating.emoji }} {{ rating.label }} Footprint
+                    </span>
+                    <a href="/about-rating" class="text-slate-400 hover:text-emerald-600 transition" title="How are ratings calculated?">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </a>
+                </div>
+                <p class="text-slate-400 text-sm mt-6">
+                    Total: {{ "%.2f"|format(total_co2) }} kg CO₂ for {{ servings|int }} servings
+                </p>
+            </div>
+
+            <!-- Recipe Image (right side) -->
+            {% if og_image_url %}
+            <div class="md:w-72 flex-shrink-0">
+                <img src="{{ og_image_url }}" alt="{{ recipe_name }}"
+                    class="w-full h-48 md:h-full object-cover rounded-2xl">
+            </div>
+            {% endif %}
         </div>
-        <div class="mt-6 flex items-center gap-3">
-            <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium
-                {% if 'Low' in rating.label %}bg-emerald-100 text-emerald-900
-                {% elif 'Medium' in rating.label %}bg-amber-100 text-amber-900
-                {% else %}bg-rose-100 text-rose-900{% endif %}">
-                {{ rating.emoji }} {{ rating.label }} Footprint
-            </span>
-            <a href="/about-rating" class="text-slate-400 hover:text-emerald-600 transition" title="How are ratings calculated?">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-            </a>
-        </div>
-        <p class="text-slate-400 text-sm mt-6">
-            Total: {{ "%.2f"|format(total_co2) }} kg CO₂ for {{ servings|int }} servings
-        </p>
     </div>
+
+    <!-- Site Rating (if available) -->
+    {% if site_rating %}
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-6 flex items-center justify-center gap-3">
+        <svg class="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+        </svg>
+        <span class="text-xl font-semibold text-slate-900">{{ site_rating }}</span>
+        <span class="text-slate-400 text-sm">recipe rating</span>
+    </div>
+    {% endif %}
 
     <!-- Stats Row -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -87,6 +111,8 @@
             <input type="hidden" name="nutrition" value='{{ nutrition | tojson }}'>
             <input type="hidden" name="detailed_ingredients" value='{{ ingredients | tojson }}'>
             <input type="hidden" name="original_ingredients" value="{{ original_ingredients }}">
+            <input type="hidden" name="og_image_url" value="{{ og_image_url }}">
+            <input type="hidden" name="site_rating" value="{{ site_rating }}">
 
             <div class="space-y-6">
                 <!-- Source -->
@@ -103,13 +129,6 @@
                     <input type="text" name="tags"
                         class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400"
                         placeholder="dinner, quick, vegetarian (comma-separated)">
-                </div>
-
-                <!-- Notes -->
-                <div>
-                    <label class="block text-sm font-medium text-slate-900 mb-2">Instructions / Notes</label>
-                    <textarea name="notes" rows="6"
-                        class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400 resize-none">{{ notes }}</textarea>
                 </div>
 
                 <!-- Submit -->
