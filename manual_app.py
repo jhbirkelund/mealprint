@@ -1,12 +1,11 @@
 from flask import Flask, request, render_template, redirect
-import pandas as pd
 import json
 import os
 from quantulum3 import parser
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, calculate_rating
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
-from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name
+from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name, get_all_climate_ingredients
 
 app = Flask(__name__)
 
@@ -17,50 +16,21 @@ try:
 except Exception as e:
     print(f"Database initialization error: {e}")
 
-# Load both English and Danish climate databases at startup
-df_en = pd.read_excel('climate_data.xlsx', sheet_name='DK')
-df_dk_raw = pd.read_excel('climate_data_DK.xlsx', sheet_name='DK')
+# Load climate ingredients from Supabase at startup (cached for fuzzy matching)
+# This unified table includes Danish DB (highest confidence) + Agribalyse (high confidence)
+try:
+    CLIMATE_INGREDIENTS = get_all_climate_ingredients()
+    CLIMATE_NAMES = [ing['name'] for ing in CLIMATE_INGREDIENTS]
+    print(f"Loaded {len(CLIMATE_INGREDIENTS)} climate ingredients from database")
+except Exception as e:
+    print(f"Warning: Could not load climate ingredients: {e}")
+    CLIMATE_INGREDIENTS = []
+    CLIMATE_NAMES = []
 
-# Standardize Danish column names to match English
-df_dk = df_dk_raw.rename(columns={
-    'Navn': 'Name',
-    'Total kg CO2e/kg': 'Total kg CO2-eq/kg',
-    'Energi (KJ/100 g)': 'Energy (KJ/100 g)',
-    'Fedt (g/100 g)': 'Fat (g/100 g)',
-    'Kulhydrat (g/100 g)': 'Carbohydrate (g/100 g)',
-    'Protein (g/100 g)': 'Protein (g/100 g)'
-})
-
-# Keep df as alias for backwards compatibility (defaults to English)
-df = df_en
-
-def detect_language(text):
-    """Detect if text is Danish or English based on characters and common words."""
-    text_lower = text.lower()
-
-    # Danish-specific characters
-    if any(c in text for c in 'æøå'):
-        return 'dk'
-
-    # Common Danish words/units
-    danish_indicators = ['spsk', 'tsk', 'stk', 'fed ', ' og ', ' med ', ' til ', ' eller ',
-                         'hakket', 'revet', 'skiver', 'skåret', 'frisk', 'tørret']
-    if any(word in text_lower for word in danish_indicators):
-        return 'dk'
-
-    return 'en'
-
-def get_db_for_language(lang):
-    """Return the appropriate dataframe for the language."""
-    return df_dk if lang == 'dk' else df_en
 
 def get_processed_ingredients(raw_text_block):
     processed_list = []
     lines = raw_text_block.split('\n')
-
-    # Detect language of the full text block
-    detected_lang = detect_language(raw_text_block)
-    active_df = get_db_for_language(detected_lang)
 
     # Informal units that quantulum3 doesn't recognize - map to standard units
     INFORMAL_UNITS = {
@@ -112,7 +82,7 @@ def get_processed_ingredients(raw_text_block):
 
             # Step 1: Token-based contains matching
             # Check if any word from search (>3 chars) appears in DB name, or vice versa
-            all_names = [n for n in active_df['Name'].tolist() if isinstance(n, str)]
+            # Uses cached CLIMATE_NAMES from Supabase (Danish + Agribalyse)
             search_words = [w.lower() for w in search_query.split() if len(w) > 3]
 
             def word_match_score(name):
@@ -130,7 +100,7 @@ def get_processed_ingredients(raw_text_block):
                     score += 5
                 return score
 
-            scored_matches = [(name, word_match_score(name)) for name in all_names]
+            scored_matches = [(name, word_match_score(name)) for name in CLIMATE_NAMES]
             contains_matches = [name for name, score in scored_matches if score > 0]
             # Sort by score descending, then by name length (prefer shorter names as tiebreaker)
             contains_matches.sort(key=lambda n: (-word_match_score(n), len(n)))
@@ -138,7 +108,7 @@ def get_processed_ingredients(raw_text_block):
             # Step 2: Always add fuzzy matches too
             fuzzy_matches = process.extract(
                 search_query,
-                all_names,
+                CLIMATE_NAMES,
                 scorer=fuzz.WRatio,
                 limit=20,
                 score_cutoff=40
@@ -258,10 +228,8 @@ def summary():
         raw_unit = item['unit'].lower().strip() if item['unit'] else ""
         item['unit'] = UNIT_MAP.get(raw_unit, raw_unit)
 
-    # Get all ingredients from BOTH databases for the template (user can search either language)
-    all_ingredients_en = [n for n in df_en['Name'].unique().tolist() if isinstance(n, str)]
-    all_ingredients_dk = [n for n in df_dk['Name'].unique().tolist() if isinstance(n, str)]
-    all_ingredients = sorted(set(all_ingredients_en + all_ingredients_dk))
+    # Get all ingredients from cached Supabase data (Danish + Agribalyse)
+    all_ingredients = sorted(set(CLIMATE_NAMES))
     available_units = list(CONVERSIONS['units'].keys())
 
     return render_template('summary.html',
@@ -302,42 +270,20 @@ def calculate():
         unit = units[i]
         match_name = selected_matches[i]
 
-        # Look up CO2 values from unified climate_ingredients table
+        # Look up CO2 values from unified climate_ingredients table (Supabase)
         # Uses waterfall: Danish (highest) -> Agribalyse (high) -> HESTIA (medium)
         db_match = get_ingredient_by_name(match_name)
 
-        # Fallback to old DataFrame lookup if not found in new table
         if not db_match:
-            db_match_en = df_en[df_en['Name'] == match_name]
-            db_match_dk = df_dk[df_dk['Name'] == match_name]
+            # Skip if not found in database
+            continue
 
-            if not db_match_en.empty:
-                db_row = db_match_en.iloc[0]
-                co2_val = db_row['Total kg CO2-eq/kg']
-                energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
-                fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
-                carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
-                protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
-                source_db = 'legacy'
-            elif not db_match_dk.empty:
-                db_row = db_match_dk.iloc[0]
-                co2_val = db_row['Total kg CO2-eq/kg']
-                energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
-                fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
-                carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
-                protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
-                source_db = 'legacy'
-            else:
-                # Skip if not found in any database
-                continue
-        else:
-            # Use new climate_ingredients table (preferred)
-            co2_val = db_match['co2_per_kg']
-            energy_kj = db_match['energy_kj'] or 0
-            fat = db_match['fat_g'] or 0
-            carbs = db_match['carbs_g'] or 0
-            protein = db_match['protein_g'] or 0
-            source_db = db_match['source_db']
+        co2_val = db_match['co2_per_kg']
+        energy_kj = db_match['energy_kj'] or 0
+        fat = db_match['fat_g'] or 0
+        carbs = db_match['carbs_g'] or 0
+        protein = db_match['protein_g'] or 0
+        source_db = db_match['source_db']
 
         # Calculate weight and impact
         grams = get_weight_in_grams(amt, unit, match_name)
@@ -463,10 +409,8 @@ def edit(recipe_id):
     if not r:
         return render_template('home.html', error="Recipe not found")
 
-    # Get all ingredients from BOTH databases for the template
-    all_ingredients_en = [n for n in df_en['Name'].unique().tolist() if isinstance(n, str)]
-    all_ingredients_dk = [n for n in df_dk['Name'].unique().tolist() if isinstance(n, str)]
-    all_ingredients = sorted(set(all_ingredients_en + all_ingredients_dk))
+    # Get all ingredients from cached Supabase data (Danish + Agribalyse)
+    all_ingredients = sorted(set(CLIMATE_NAMES))
     available_units = list(CONVERSIONS['units'].keys())
 
     return render_template('edit.html',
@@ -508,40 +452,20 @@ def update(recipe_id):
         unit = units[i]
         match_name = selected_matches[i]
 
-        # Look up CO2 values from unified climate_ingredients table
+        # Look up CO2 values from unified climate_ingredients table (Supabase)
+        # Uses waterfall: Danish (highest) -> Agribalyse (high) -> HESTIA (medium)
         db_match = get_ingredient_by_name(match_name)
 
-        # Fallback to old DataFrame lookup if not found in new table
         if not db_match:
-            db_match_en = df_en[df_en['Name'] == match_name]
-            db_match_dk = df_dk[df_dk['Name'] == match_name]
+            # Skip if not found in database
+            continue
 
-            if not db_match_en.empty:
-                db_row = db_match_en.iloc[0]
-                co2_val = db_row['Total kg CO2-eq/kg']
-                energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
-                fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
-                carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
-                protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
-                source_db = 'legacy'
-            elif not db_match_dk.empty:
-                db_row = db_match_dk.iloc[0]
-                co2_val = db_row['Total kg CO2-eq/kg']
-                energy_kj = db_row['Energy (KJ/100 g)'] if pd.notna(db_row['Energy (KJ/100 g)']) else 0
-                fat = db_row['Fat (g/100 g)'] if pd.notna(db_row['Fat (g/100 g)']) else 0
-                carbs = db_row['Carbohydrate (g/100 g)'] if pd.notna(db_row['Carbohydrate (g/100 g)']) else 0
-                protein = db_row['Protein (g/100 g)'] if pd.notna(db_row['Protein (g/100 g)']) else 0
-                source_db = 'legacy'
-            else:
-                continue
-        else:
-            # Use new climate_ingredients table (preferred)
-            co2_val = db_match['co2_per_kg']
-            energy_kj = db_match['energy_kj'] or 0
-            fat = db_match['fat_g'] or 0
-            carbs = db_match['carbs_g'] or 0
-            protein = db_match['protein_g'] or 0
-            source_db = db_match['source_db']
+        co2_val = db_match['co2_per_kg']
+        energy_kj = db_match['energy_kj'] or 0
+        fat = db_match['fat_g'] or 0
+        carbs = db_match['carbs_g'] or 0
+        protein = db_match['protein_g'] or 0
+        source_db = db_match['source_db']
 
         grams = get_weight_in_grams(amt, unit, match_name)
         item_co2 = (grams / 1000) * co2_val
