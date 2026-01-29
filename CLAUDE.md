@@ -336,6 +336,7 @@ New routes:
 - "Inspiration cards" with image, title, CO2 badge, source link
 
 ### Future Enhancements
+- **Google Sheets import** - One-click import from a configured Google Sheet (publish as CSV, store URL in env var, button in admin pulls URLs)
 - **HESTIA database integration** - Global fallback for exotic ingredients
 - **LLM fallback** - For < 40% confidence matches, call Claude API
 - **Learn from corrections** - Log when users change matches, suggest new aliases

@@ -132,7 +132,31 @@ def get_processed_ingredients(raw_text_block):
     return processed_list
 
 @app.route('/')
-def home():
+def explore():
+    """Home page - Explore recipes."""
+    # Load recipes from database
+    recipes = get_all_recipes()
+
+    # Only show published recipes on the public explore page
+    recipes = [r for r in recipes if r.get('is_published', True)]
+
+    # Calculate rating for any recipes missing it
+    for r in recipes:
+        if not r.get('rating') or not r['rating'].get('label'):
+            r['rating'] = calculate_rating(r.get('co2_per_serving', 0))
+
+    # Collect all unique tags across recipes
+    all_tags = set()
+    for r in recipes:
+        if r.get('tags'):
+            all_tags.update(r['tags'])
+    all_tags = sorted(all_tags)
+
+    return render_template('history.html', recipes=recipes, all_tags=all_tags)
+
+@app.route('/new')
+def new_recipe():
+    """Add new recipe page."""
     return render_template('home.html')
 
 @app.route('/scrape', methods=['POST'])
@@ -365,25 +389,10 @@ def save():
     # Redirect to the new recipe
     return redirect(f'/recipe/{recipe_id}')
 
-# Show list of all recipes in DB:
+# Legacy route - redirect to home
 @app.route('/history')
 def history():
-    # Load recipes from database
-    recipes = get_all_recipes()
-
-    # Calculate rating for any recipes missing it
-    for r in recipes:
-        if not r.get('rating') or not r['rating'].get('label'):
-            r['rating'] = calculate_rating(r.get('co2_per_serving', 0))
-
-    # Collect all unique tags across recipes
-    all_tags = set()
-    for r in recipes:
-        if r.get('tags'):
-            all_tags.update(r['tags'])
-    all_tags = sorted(all_tags)
-
-    return render_template('history.html', recipes=recipes, all_tags=all_tags)
+    return redirect('/')
 
 @app.route('/recipe/<recipe_id>')
 def recipe(recipe_id):

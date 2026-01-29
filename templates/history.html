@@ -1,23 +1,32 @@
 {% extends "base.html" %}
 
-{% block title %}Recipes - Mealprint{% endblock %}
+{% block title %}Explore Recipes - Mealprint{% endblock %}
 
 {% block content %}
 <div class="max-w-5xl mx-auto pt-10">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
-        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Recipes</h1>
-        <a href="/" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-sm font-medium transition shadow-sm">
+        <div>
+            <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Explore Recipes</h1>
+            <p class="text-slate-500 mt-1">{{ recipes|length }} recipes</p>
+        </div>
+        <a href="/new" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-sm font-medium transition shadow-sm">
             + New Recipe
         </a>
     </div>
 
     {% if recipes %}
-    <!-- Search Field -->
-    <div class="mb-6">
+    <!-- Search and Sort -->
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
         <input type="text" id="searchInput" placeholder="Search recipes..."
-            class="w-full px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400">
+            class="flex-1 px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400">
+        <select id="sortSelect" class="px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 bg-white">
+            <option value="date">Newest first</option>
+            <option value="co2-asc">Lowest CO2</option>
+            <option value="co2-desc">Highest CO2</option>
+            <option value="title">A-Z</option>
+        </select>
     </div>
 
     <!-- Tag Filters -->
@@ -38,7 +47,9 @@
         {% for r in recipes %}
         <a href="/recipe/{{ r.id }}" class="recipe-card bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition group"
             data-name="{{ r.name|lower }}"
-            data-tags="{{ r.tags|join(',') if r.tags else '' }}">
+            data-tags="{{ r.tags|join(',') if r.tags else '' }}"
+            data-co2="{{ r.co2_per_serving }}"
+            data-index="{{ loop.index }}">
             <div class="flex items-start justify-between">
                 <div class="flex-1 min-w-0">
                     <h2 class="text-lg font-semibold text-slate-900 group-hover:text-emerald-600 transition truncate">{{ r.name }}</h2>
@@ -80,7 +91,7 @@
         <div class="text-6xl mb-4">🥗</div>
         <h2 class="text-xl font-semibold text-slate-900 mb-2">No recipes yet</h2>
         <p class="text-slate-500 mb-6">Start tracking the carbon footprint of your meals</p>
-        <a href="/" class="inline-block bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl text-sm font-medium transition shadow-sm">
+        <a href="/new" class="inline-block bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-3 rounded-2xl text-sm font-medium transition shadow-sm">
             Create Your First Recipe
         </a>
     </div>
@@ -91,15 +102,16 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
     const tagFilters = document.querySelectorAll('.tag-filter');
-    const recipeCards = document.querySelectorAll('.recipe-card');
+    const recipeGrid = document.getElementById('recipeGrid');
+    let recipeCards = Array.from(document.querySelectorAll('.recipe-card'));
 
     let activeTag = 'all';
 
     // Tag filter click handler
     tagFilters.forEach(button => {
         button.addEventListener('click', function() {
-            // Update active state
             tagFilters.forEach(b => {
                 b.classList.remove('active', 'bg-emerald-500', 'text-white');
                 b.classList.add('bg-slate-100', 'text-slate-600');
@@ -117,6 +129,32 @@ document.addEventListener('DOMContentLoaded', function() {
         searchInput.addEventListener('input', filterRecipes);
     }
 
+    // Sort handler
+    if (sortSelect) {
+        sortSelect.addEventListener('change', sortRecipes);
+    }
+
+    function sortRecipes() {
+        const sortBy = sortSelect.value;
+
+        recipeCards.sort((a, b) => {
+            if (sortBy === 'date') {
+                return parseInt(a.dataset.index) - parseInt(b.dataset.index);
+            } else if (sortBy === 'co2-asc') {
+                return parseFloat(a.dataset.co2) - parseFloat(b.dataset.co2);
+            } else if (sortBy === 'co2-desc') {
+                return parseFloat(b.dataset.co2) - parseFloat(a.dataset.co2);
+            } else if (sortBy === 'title') {
+                return a.dataset.name.localeCompare(b.dataset.name);
+            }
+            return 0;
+        });
+
+        // Re-append cards in sorted order
+        recipeCards.forEach(card => recipeGrid.appendChild(card));
+        filterRecipes();
+    }
+
     function filterRecipes() {
         const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
 
@@ -124,18 +162,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const name = card.dataset.name || '';
             const tags = card.dataset.tags || '';
 
-            // Check search match
             const matchesSearch = name.includes(searchTerm);
-
-            // Check tag match
             const matchesTag = activeTag === 'all' || tags.split(',').includes(activeTag);
 
-            // Show/hide card
-            if (matchesSearch && matchesTag) {
-                card.style.display = '';
-            } else {
-                card.style.display = 'none';
-            }
+            card.style.display = (matchesSearch && matchesTag) ? '' : 'none';
         });
     }
 });
