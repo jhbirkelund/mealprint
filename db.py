@@ -556,12 +556,13 @@ def search_climate_ingredients(search_term, limit=20):
 def get_ingredient_by_name(name):
     """
     Get a single ingredient by exact name match.
+    Matches against display name (COALESCE) or any individual name column.
     Uses waterfall: Danish first, then Agribalyse.
     """
     conn = get_connection()
     cur = conn.cursor()
 
-    # Try exact match, prioritize by confidence
+    # Try exact match against display name or any column, prioritize by confidence
     cur.execute('''
         SELECT
             id,
@@ -579,6 +580,7 @@ def get_ingredient_by_name(name):
             protein_g
         FROM climate_ingredients
         WHERE
+            COALESCE(name_en, name_dk, name_fr) = %s OR
             name_en = %s OR
             name_dk = %s OR
             name_fr = %s
@@ -590,7 +592,7 @@ def get_ingredient_by_name(name):
                 ELSE 4
             END
         LIMIT 1
-    ''', (name, name, name))
+    ''', (name, name, name, name))
 
     result = cur.fetchone()
     cur.close()

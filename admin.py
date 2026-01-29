@@ -247,9 +247,9 @@ def save_recipe(recipe_id):
             co2 = (grams / 1000) * co2_per_kg
             source_db = climate_data.get('source_db', 'unknown')
 
-            # Nutrition (if available)
+            # Nutrition (if available) - values in DB are per 100g
             if climate_data.get('energy_kj'):
-                factor = grams / 1000  # per kg to actual amount
+                factor = grams / 100  # per 100g to actual amount
                 total_nutrition['kcal'] += (climate_data.get('energy_kj', 0) or 0) * factor / 4.184
                 total_nutrition['fat'] += (climate_data.get('fat_g', 0) or 0) * factor
                 total_nutrition['carbs'] += (climate_data.get('carbs_g', 0) or 0) * factor

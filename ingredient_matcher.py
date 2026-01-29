@@ -72,62 +72,71 @@ def parse_ingredients(raw_text_block, climate_names=None):
             raw_unit_name = quants[0].unit.name.lower()
             unit = UNIT_MAP.get(raw_unit_name, raw_unit_name)
             search_query = str(line.replace(str(quants[0].surface), "").strip().split(',')[0])
+        else:
+            # No quantity found - default to 1 piece (e.g., "salt", "pepper to taste")
+            amt = 1
+            unit = 'piece'
+            # Use the whole line as search query, clean up common phrases
+            search_query = line
+            for phrase in ['to taste', 'as needed', 'for garnish', 'optional', 'a pinch of', 'pinch of']:
+                search_query = search_query.lower().replace(phrase, '').strip()
+            search_query = search_query.strip(',')
 
-            # Step 0: Check for alias matches (longest match first)
-            search_lower = search_query.lower()
-            for alias, replacement in sorted(INGREDIENT_ALIASES.items(), key=lambda x: len(x[0]), reverse=True):
-                if alias in search_lower:
-                    search_query = replacement
-                    break
+        # Step 0: Check for alias matches (longest match first)
+        search_lower = search_query.lower()
+        for alias, replacement in sorted(INGREDIENT_ALIASES.items(), key=lambda x: len(x[0]), reverse=True):
+            if alias in search_lower:
+                search_query = replacement
+                break
 
-            # Step 1: Token-based contains matching
-            search_words = [w.lower() for w in search_query.split() if len(w) > 3]
+        # Step 1: Token-based contains matching
+        search_words = [w.lower() for w in search_query.split() if len(w) > 3]
 
-            def word_match_score(name):
-                name_lower = name.lower()
-                name_words = [w for w in name_lower.replace(',', '').split() if len(w) > 3]
-                score = 0
-                for sw in search_words:
-                    if sw in name_lower:
-                        score += 2
-                for nw in name_words:
-                    if nw in search_query.lower():
-                        score += 2
-                # Bonus: name starts with first search word
-                if search_words and name_lower.startswith(search_words[0]):
-                    score += 5
-                return score
+        def word_match_score(name):
+            name_lower = name.lower()
+            name_words = [w for w in name_lower.replace(',', '').split() if len(w) > 3]
+            score = 0
+            for sw in search_words:
+                if sw in name_lower:
+                    score += 2
+            for nw in name_words:
+                if nw in search_query.lower():
+                    score += 2
+            # Bonus: name starts with first search word
+            if search_words and name_lower.startswith(search_words[0]):
+                score += 5
+            return score
 
-            scored_matches = [(name, word_match_score(name)) for name in climate_names]
-            contains_matches = [name for name, score in scored_matches if score > 0]
-            contains_matches.sort(key=lambda n: (-word_match_score(n), len(n)))
+        scored_matches = [(name, word_match_score(name)) for name in climate_names]
+        contains_matches = [name for name, score in scored_matches if score > 0]
+        contains_matches.sort(key=lambda n: (-word_match_score(n), len(n)))
 
-            # Step 2: Always add fuzzy matches too
-            fuzzy_matches = process.extract(
-                search_query,
-                climate_names,
-                scorer=fuzz.WRatio,
-                limit=20,
-                score_cutoff=40
-            )
-            fuzzy_names = [match[0] for match in fuzzy_matches]
+        # Step 2: Always add fuzzy matches too
+        fuzzy_matches = process.extract(
+            search_query,
+            climate_names,
+            scorer=fuzz.WRatio,
+            limit=20,
+            score_cutoff=40
+        )
+        fuzzy_names = [match[0] for match in fuzzy_matches]
 
-            # Combine: word matches first, then fuzzy (no duplicates), limit to 15
-            candidate_names = contains_matches[:10] + [n for n in fuzzy_names if n not in contains_matches]
-            candidate_names = candidate_names[:15]
+        # Combine: word matches first, then fuzzy (no duplicates), limit to 15
+        candidate_names = contains_matches[:10] + [n for n in fuzzy_names if n not in contains_matches]
+        candidate_names = candidate_names[:15]
 
-            # Determine confidence: word match exists OR fuzzy score > 70
-            best_fuzzy_score = fuzzy_matches[0][1] if fuzzy_matches else 0
-            is_confident = len(contains_matches) > 0 or best_fuzzy_score >= 70
+        # Determine confidence: word match exists OR fuzzy score > 70
+        best_fuzzy_score = fuzzy_matches[0][1] if fuzzy_matches else 0
+        is_confident = len(contains_matches) > 0 or best_fuzzy_score >= 70
 
-            processed_list.append({
-                "original_line": line,
-                "amount": amt,
-                "unit": unit,
-                "query": search_query,
-                "candidates": candidate_names,
-                "confident": is_confident
-            })
+        processed_list.append({
+            "original_line": line,
+            "amount": amt,
+            "unit": unit,
+            "query": search_query,
+            "candidates": candidate_names,
+            "confident": is_confident
+        })
 
     return processed_list
 
