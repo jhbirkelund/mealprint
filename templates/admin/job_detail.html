@@ -57,7 +57,7 @@
         <h2 class="font-medium text-slate-900">URLs</h2>
     </div>
     <div class="divide-y divide-slate-100">
-        {% for item in job.items %}
+        {% for item in job['items'] %}
         <div class="px-4 py-3 flex items-center justify-between">
             <div class="flex-1 min-w-0">
                 <div class="text-sm font-mono text-slate-600 truncate">{{ item.url }}</div>
