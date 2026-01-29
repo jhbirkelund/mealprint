@@ -51,6 +51,30 @@ def init_db():
                           WHERE table_name='recipes' AND column_name='site_rating') THEN
                 ALTER TABLE recipes ADD COLUMN site_rating TEXT;
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='origin') THEN
+                ALTER TABLE recipes ADD COLUMN origin TEXT DEFAULT 'user_created';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='is_published') THEN
+                ALTER TABLE recipes ADD COLUMN is_published BOOLEAN DEFAULT TRUE;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='import_job_id') THEN
+                ALTER TABLE recipes ADD COLUMN import_job_id TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='language') THEN
+                ALTER TABLE recipes ADD COLUMN language TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='domain') THEN
+                ALTER TABLE recipes ADD COLUMN domain TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='recipe_creator') THEN
+                ALTER TABLE recipes ADD COLUMN recipe_creator TEXT;
+            END IF;
         END $$;
     ''')
 
@@ -121,11 +145,43 @@ def init_db():
     cur.execute('CREATE INDEX IF NOT EXISTS idx_climate_name_fr ON climate_ingredients(name_fr)')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_climate_source ON climate_ingredients(source_db)')
 
+    # Create import_jobs table for batch scraping
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS import_jobs (
+            id TEXT PRIMARY KEY,
+            status TEXT DEFAULT 'pending',
+            total_urls INTEGER DEFAULT 0,
+            processed_count INTEGER DEFAULT 0,
+            success_count INTEGER DEFAULT 0,
+            error_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP
+        )
+    ''')
+
+    # Create import_items table for individual URLs in a job
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS import_items (
+            id SERIAL PRIMARY KEY,
+            job_id TEXT REFERENCES import_jobs(id) ON DELETE CASCADE,
+            url TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            recipe_id TEXT REFERENCES recipes(id) ON DELETE SET NULL,
+            error_message TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            processed_at TIMESTAMP
+        )
+    ''')
+
+    # Create indexes for import tables
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_import_items_job ON import_items(job_id)')
+    cur.execute('CREATE INDEX IF NOT EXISTS idx_import_items_status ON import_items(status)')
+
     conn.commit()
     cur.close()
     conn.close()
 
-def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=None, tags=None, source=None, og_image_url=None, site_rating=None, original_ingredients=None, rating=None):
+def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=None, tags=None, source=None, og_image_url=None, site_rating=None, original_ingredients=None, rating=None, origin='user_created', is_published=True, import_job_id=None, language=None, domain=None, recipe_creator=None):
     """Save a recipe to the database."""
     recipe_id = str(uuid.uuid4())
     co2_per_serving = round(total_co2 / servings, 3) if servings > 0 else 0
@@ -137,8 +193,9 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
     cur.execute('''
         INSERT INTO recipes (id, name, total_co2, servings, co2_per_serving, source, og_image_url, site_rating, original_ingredients,
                             rating_label, rating_color, rating_emoji,
-                            nutrition_kcal, nutrition_fat, nutrition_carbs, nutrition_protein)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                            nutrition_kcal, nutrition_fat, nutrition_carbs, nutrition_protein,
+                            origin, is_published, import_job_id, language, domain, recipe_creator)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ''', (
         recipe_id,
         recipe_name,
@@ -155,7 +212,13 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
         nutrition.get('kcal', 0) if nutrition else 0,
         nutrition.get('fat', 0) if nutrition else 0,
         nutrition.get('carbs', 0) if nutrition else 0,
-        nutrition.get('protein', 0) if nutrition else 0
+        nutrition.get('protein', 0) if nutrition else 0,
+        origin,
+        is_published,
+        import_job_id,
+        language,
+        domain,
+        recipe_creator
     ))
 
     # Insert ingredients
@@ -231,7 +294,13 @@ def get_all_recipes():
                     'carbs': r['nutrition_carbs'],
                     'protein': r['nutrition_protein']
                 }
-            }
+            },
+            'origin': r.get('origin', 'user_created'),
+            'is_published': r.get('is_published', True),
+            'import_job_id': r.get('import_job_id'),
+            'language': r.get('language'),
+            'domain': r.get('domain'),
+            'recipe_creator': r.get('recipe_creator')
         })
 
     cur.close()
@@ -286,7 +355,13 @@ def get_recipe_by_id(recipe_id):
                 'carbs': r['nutrition_carbs'],
                 'protein': r['nutrition_protein']
             }
-        }
+        },
+        'origin': r.get('origin', 'user_created'),
+        'is_published': r.get('is_published', True),
+        'import_job_id': r.get('import_job_id'),
+        'language': r.get('language'),
+        'domain': r.get('domain'),
+        'recipe_creator': r.get('recipe_creator')
     }
 
 def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings, nutrition=None, tags=None, source=None, og_image_url=None, site_rating=None, original_ingredients=None, rating=None):
@@ -539,3 +614,163 @@ def get_ingredient_by_name(name):
         'carbs_g': result[11],
         'protein_g': result[12]
     }
+
+
+# =============================================================================
+# Import Jobs - Bulk Scraping Management
+# =============================================================================
+
+def create_import_job(urls):
+    """Create a new import job with a list of URLs to process."""
+    job_id = str(uuid.uuid4())
+
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Create the job
+    cur.execute('''
+        INSERT INTO import_jobs (id, status, total_urls)
+        VALUES (%s, 'pending', %s)
+    ''', (job_id, len(urls)))
+
+    # Add each URL as an import item
+    for url in urls:
+        cur.execute('''
+            INSERT INTO import_items (job_id, url, status)
+            VALUES (%s, %s, 'pending')
+        ''', (job_id, url.strip()))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return job_id
+
+
+def get_import_job(job_id):
+    """Get an import job by ID with its items."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute('SELECT * FROM import_jobs WHERE id = %s', (job_id,))
+    job = cur.fetchone()
+
+    if not job:
+        cur.close()
+        conn.close()
+        return None
+
+    # Get items for this job
+    cur.execute('''
+        SELECT id, url, status, recipe_id, error_message, processed_at
+        FROM import_items
+        WHERE job_id = %s
+        ORDER BY id
+    ''', (job_id,))
+    items = [dict(item) for item in cur.fetchall()]
+
+    cur.close()
+    conn.close()
+
+    return {
+        'id': job['id'],
+        'status': job['status'],
+        'total_urls': job['total_urls'],
+        'processed_count': job['processed_count'],
+        'success_count': job['success_count'],
+        'error_count': job['error_count'],
+        'created_at': job['created_at'],
+        'completed_at': job['completed_at'],
+        'items': items
+    }
+
+
+def get_all_import_jobs():
+    """Get all import jobs (without items, for listing)."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute('''
+        SELECT id, status, total_urls, processed_count, success_count, error_count, created_at, completed_at
+        FROM import_jobs
+        ORDER BY created_at DESC
+    ''')
+    jobs = [dict(job) for job in cur.fetchall()]
+
+    cur.close()
+    conn.close()
+
+    return jobs
+
+
+def get_pending_import_items(job_id, limit=10):
+    """Get pending items from a job for processing."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute('''
+        SELECT id, url
+        FROM import_items
+        WHERE job_id = %s AND status = 'pending'
+        ORDER BY id
+        LIMIT %s
+    ''', (job_id, limit))
+    items = [dict(item) for item in cur.fetchall()]
+
+    cur.close()
+    conn.close()
+
+    return items
+
+
+def update_import_item(item_id, status, recipe_id=None, error_message=None):
+    """Update an import item after processing."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute('''
+        UPDATE import_items
+        SET status = %s, recipe_id = %s, error_message = %s, processed_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+        RETURNING job_id
+    ''', (status, recipe_id, error_message, item_id))
+
+    result = cur.fetchone()
+    job_id = result[0] if result else None
+
+    if job_id:
+        # Update job counters
+        cur.execute('''
+            UPDATE import_jobs
+            SET processed_count = (SELECT COUNT(*) FROM import_items WHERE job_id = %s AND status != 'pending'),
+                success_count = (SELECT COUNT(*) FROM import_items WHERE job_id = %s AND status = 'success'),
+                error_count = (SELECT COUNT(*) FROM import_items WHERE job_id = %s AND status = 'error')
+            WHERE id = %s
+        ''', (job_id, job_id, job_id, job_id))
+
+        # Check if job is complete
+        cur.execute('''
+            UPDATE import_jobs
+            SET status = 'completed', completed_at = CURRENT_TIMESTAMP
+            WHERE id = %s AND processed_count = total_urls AND status != 'completed'
+        ''', (job_id,))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def start_import_job(job_id):
+    """Mark an import job as processing."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute('''
+        UPDATE import_jobs
+        SET status = 'processing'
+        WHERE id = %s AND status = 'pending'
+    ''', (job_id,))
+
+    conn.commit()
+    cur.close()
+    conn.close()

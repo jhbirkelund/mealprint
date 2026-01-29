@@ -52,16 +52,39 @@ python auto_builder.py
 
 - **db.py** - Database module for PostgreSQL (Supabase):
   - `get_connection()` - Connect using DATABASE_URL env var
-  - `init_db()` - Create tables (recipes, recipe_ingredients, recipe_tags, climate_ingredients)
-  - `save_recipe_to_db()` - Insert new recipe with original_line tracking, returns recipe_id
-  - `get_all_recipes()` - List all recipes with nested ingredients/tags (includes original_line, source_db)
-  - `get_recipe_by_id()` - Get single recipe by UUID (includes original_line, source_db)
+  - `init_db()` - Create tables (recipes, recipe_ingredients, recipe_tags, climate_ingredients, import_jobs, import_items)
+  - `save_recipe_to_db()` - Insert new recipe with origin/is_published/import_job_id tracking, returns recipe_id
+  - `get_all_recipes()` - List all recipes with nested ingredients/tags (includes origin, is_published)
+  - `get_recipe_by_id()` - Get single recipe by UUID (includes origin, is_published)
   - `update_recipe_in_db()` - Update existing recipe
   - `delete_recipe_from_db()` - Delete recipe (CASCADE deletes related data)
   - **Climate Ingredients (Multi-Source Engine):**
     - `get_all_climate_ingredients()` - Get all ingredient names for autocomplete
     - `search_climate_ingredients(term, limit)` - Search with waterfall priority (Danish → Agribalyse)
     - `get_ingredient_by_name(name)` - Exact match lookup with confidence ranking
+  - **Import Jobs (Bulk Scraping):**
+    - `create_import_job(urls)` - Create job with URL list, returns job_id
+    - `get_import_job(job_id)` - Get job with all items
+    - `get_all_import_jobs()` - List all jobs (for admin UI)
+    - `get_pending_import_items(job_id)` - Get URLs ready to process
+    - `update_import_item(item_id, status)` - Update item after processing (auto-updates job counters)
+    - `start_import_job(job_id)` - Mark job as processing
+
+- **ingredient_matcher.py** - Shared ingredient matching logic:
+  - `parse_ingredients(raw_text)` - Parse ingredient text, return candidates with confidence
+  - `calculate_ingredient(amount, unit, name)` - Calculate CO2/nutrition for single ingredient
+  - `calculate_recipe_totals(ingredients)` - Sum CO2 and nutrition for full recipe
+  - `auto_match_ingredients(raw_text)` - Parse and auto-select best matches (for bulk scraper)
+  - `load_climate_names()` - Load ingredient names from Supabase
+
+- **bulk_scraper.py** - Batch recipe import tool:
+  - `run_import_job(urls)` - Process URL list, save as unpublished recipes
+  - `scrape_recipe(url)` - Extract recipe data from URL
+  - `process_recipe(data, climate_names)` - Match ingredients and calculate CO2
+  - `detect_language(text, domain)` - Simple EN/DA/FR detection
+  - CLI: `python bulk_scraper.py urls.txt` or `python bulk_scraper.py <url1> <url2>`
+  - Rate limited (3 seconds between requests)
+  - All scraped recipes saved with `origin='bulk_scraped'`, `is_published=False`
 
 - **import_climate_data.py** - Imports climate data into unified table:
   - `clear_climate_ingredients()` - Clear existing data for fresh import
@@ -144,6 +167,12 @@ CREATE TABLE recipes (
     nutrition_fat REAL,
     nutrition_carbs REAL,
     nutrition_protein REAL,
+    origin TEXT DEFAULT 'user_created',  -- 'user_created', 'user_scraped', 'bulk_scraped'
+    is_published BOOLEAN DEFAULT TRUE,   -- false for bulk-scraped until reviewed
+    import_job_id TEXT,                  -- links to import_jobs for bulk imports
+    language TEXT,                       -- 'en', 'da', 'fr', etc.
+    domain TEXT,                         -- source website domain
+    recipe_creator TEXT,                 -- user ID or 'admin' for bulk imports
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -186,11 +215,37 @@ CREATE TABLE climate_ingredients (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- import_jobs table (bulk scraping)
+CREATE TABLE import_jobs (
+    id TEXT PRIMARY KEY,
+    status TEXT DEFAULT 'pending',       -- 'pending', 'processing', 'completed'
+    total_urls INTEGER DEFAULT 0,
+    processed_count INTEGER DEFAULT 0,
+    success_count INTEGER DEFAULT 0,
+    error_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMP
+);
+
+-- import_items table (individual URLs in a job)
+CREATE TABLE import_items (
+    id SERIAL PRIMARY KEY,
+    job_id TEXT REFERENCES import_jobs(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',       -- 'pending', 'success', 'error'
+    recipe_id TEXT REFERENCES recipes(id) ON DELETE SET NULL,
+    error_message TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    processed_at TIMESTAMP
+);
+
 -- Indexes for fast lookups
 CREATE INDEX idx_climate_name_en ON climate_ingredients(name_en);
 CREATE INDEX idx_climate_name_dk ON climate_ingredients(name_dk);
 CREATE INDEX idx_climate_name_fr ON climate_ingredients(name_fr);
 CREATE INDEX idx_climate_source ON climate_ingredients(source_db);
+CREATE INDEX idx_import_items_job ON import_items(job_id);
+CREATE INDEX idx_import_items_status ON import_items(status);
 ```
 
 ### Config Files (config/)
@@ -243,39 +298,20 @@ This enables future ML training to improve ingredient matching by learning from 
 
 ## Next Steps (Implementation Roadmap)
 
-### Phase 2: Bulk Content Factory (NOT STARTED)
+### Phase 2: Bulk Content Factory (COMPLETE)
 
 **Goal:** Batch scrape recipes with manual review
 
-1. **Extract shared matching logic** - Create `ingredient_matcher.py` from manual_app.py
-2. **Create bulk scraper** (`bulk_scraper.py`):
-   - Accept URL list → create import job → process each URL
-   - Rate limiting: 3 seconds between requests
-   - All scraped recipes saved as unpublished (no auto-approval until matching consistency proven)
-3. **Add database tables:**
-   ```sql
-   CREATE TABLE import_jobs (
-       id UUID PRIMARY KEY,
-       status TEXT DEFAULT 'pending',
-       total_urls INTEGER,
-       processed_count INTEGER DEFAULT 0,
-       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-   );
+Implemented:
+- `ingredient_matcher.py` - Shared matching logic (parse_ingredients, calculate_ingredient, auto_match_ingredients)
+- `bulk_scraper.py` - CLI tool for batch URL processing with rate limiting
+- `import_jobs` / `import_items` tables - Track batch import progress
+- Recipe columns: `origin`, `is_published`, `import_job_id`, `language`, `domain`, `recipe_creator`
 
-   CREATE TABLE import_items (
-       id SERIAL PRIMARY KEY,
-       job_id UUID REFERENCES import_jobs(id),
-       url TEXT NOT NULL,
-       status TEXT DEFAULT 'pending',
-       recipe_id UUID REFERENCES recipes(id),
-       error_message TEXT
-   );
-   ```
-4. **Add recipe columns:**
-   - `origin` - Recipe source: `user_created`, `scraped`, `auto_scraped`
-   - `is_published` - Boolean, default true for user_created, false for scraped
-   - `import_job_id` - Links to batch import job (nullable)
-   - `language`, `domain` - Metadata from scraping
+**Origin values:**
+- `user_created` - Manually entered via web UI
+- `user_scraped` - User pasted URL, scraped via web UI
+- `bulk_scraped` - Imported via bulk scraper (requires admin review)
 
 ### Phase 3: Admin Review UI (NOT STARTED)
 
@@ -309,6 +345,11 @@ New routes:
 ---
 
 ### Recently Completed
+- **Phase 2: Bulk Content Factory** - Complete batch import pipeline:
+  - `ingredient_matcher.py` - Shared parsing/matching logic for web app and bulk scraper
+  - `bulk_scraper.py` - CLI tool: `python bulk_scraper.py urls.txt` (rate-limited, auto-match, saves unpublished)
+  - `import_jobs` / `import_items` tables for tracking batch progress
+  - Recipe metadata: `origin`, `is_published`, `import_job_id`, `language`, `domain`, `recipe_creator`
 - **Supabase-only lookups** - Removed pandas/Excel dependency from runtime; all ingredient matching now uses cached `CLIMATE_NAMES` from Supabase. Simpler code (-115 lines), 3x more ingredients (2,957 vs ~540)
 - **Multi-language support** - EN, DK, FR ingredient names all searchable through unified `climate_ingredients` table
 - **Multi-Source Climate Engine** - Unified `climate_ingredients` table with 2,957 ingredients (499 Danish + 2,458 Agribalyse), waterfall lookup by confidence

@@ -23,12 +23,8 @@ _aliases_config = load_json_config('ingredient_aliases.json')
 INGREDIENT_ALIASES = _aliases_config['aliases']
 
 def get_weight_in_grams(amount, unit, ingredient_name=""):
-    print(f"---RAW DATA: amount={amount}, unit'{unit}', name='{ingredient_name}' ---")
     name = ingredient_name.lower()
     clean_unit = UNIT_MAP.get(unit.lower(), unit.lower())
-
-    print(f"DEBUG: Input Unit='{unit}', Standardized Units='{clean_unit}'")
-    print(f"DEBUG: Amount={amount}, Multiplier={CONVERSIONS['units'].get(clean_unit, 'Not Found')}")
 
     # If it's a standard unit (g, kg, cup, etc.), just do the math
     if clean_unit in CONVERSIONS["units"] and clean_unit not in ["piece", "pcs", "unit"]:
