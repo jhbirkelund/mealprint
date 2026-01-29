@@ -251,7 +251,7 @@ CREATE INDEX idx_import_items_status ON import_items(status);
 ### Config Files (config/)
 
 - **units.json** - Unit conversions (g, kg, lb, oz, cup, handful, sprinkling, quart, etc.), ingredient weights (egg, onion, etc.), and unit name mappings (including "pound-mass" → "lb" for quantulum3 compatibility)
-- **ingredient_aliases.json** - Maps common recipe terms to DB names (e.g., "ground beef" → "Beef, mince", "shallots" → "Onion, raw", dried herbs → "Basil, dried")
+- **ingredient_aliases.json** - Maps common recipe terms to DB names (e.g., "ground beef" → "Beef, mince", "shallots" → "Onion, raw", herbs/spices → proper Agribalyse entries like "Oregano, dried", "Cumin, seed", "Basil, fresh")
 
 ## Dependencies
 
@@ -313,20 +313,27 @@ Implemented:
 - `user_scraped` - User pasted URL, scraped via web UI
 - `bulk_scraped` - Imported via bulk scraper (requires admin review)
 
-### Phase 3: Admin Review UI (NOT STARTED)
+### Phase 3: Admin Review UI (COMPLETE)
 
 **Password Protection:** All `/admin/*` routes behind simple password (env var `ADMIN_PASSWORD`)
 
-New routes:
+Implemented routes:
+- `/admin/login` - Password login (session-based)
+- `/admin/` - Dashboard with stats (published, pending, jobs)
 - `/admin/import` - Submit URLs (textarea, one per line)
 - `/admin/jobs` - List import jobs with status
+- `/admin/jobs/<id>` - Job detail with URL list and "Run Job" button
+- `/admin/jobs/<id>/run` - Start job processing (background thread)
 - `/admin/review` - Queue of unpublished recipes needing review
-- `/admin/review/<id>/approve` - Publish recipe
+- `/admin/review/<id>` - **Inline editing**: edit ingredients (amount/unit/name), tags, servings directly
+- `/admin/review/<id>/save` - Save changes with CO2 recalculation, publish or save as draft
+- `/admin/review/<id>/approve` - Quick publish without editing
+- `/admin/review/<id>/reject` - Delete recipe
 
-**Edit Protection for Scraped Recipes:**
-- When user clicks "Edit" on a recipe with `origin != 'user_created'`, show password prompt
-- Password stored in env var `EDIT_PASSWORD` (can be same as ADMIN_PASSWORD)
-- Allows public viewing but prevents unauthorized edits to curated content
+**Duplicate URL Handling:**
+- Deduplicates URLs within submitted batch
+- Skips URLs where a recipe with that source already exists
+- Shows stats: "Added X URLs. Skipped Y duplicates, Z already scraped."
 
 ### Phase 4: Discovery Portal (NOT STARTED)
 
@@ -350,6 +357,17 @@ New routes:
 ---
 
 ### Recently Completed
+- **Phase 3: Admin Review UI** - Complete admin interface:
+  - Password-protected admin area with session-based auth
+  - Bulk URL import with background job processing
+  - Inline recipe editing (ingredients, amounts, units, tags, servings)
+  - CO2 recalculation on save
+  - Duplicate URL detection (skips already-scraped URLs)
+  - Save & Publish / Save as Draft workflow
+- **Herb/spice aliases updated** - Now map to correct Agribalyse entries instead of defaulting to Basil/Parsley:
+  - Dried herbs: oregano, thyme, rosemary, sage, marjoram, bay leaves
+  - Fresh herbs: basil, parsley, dill, mint, cilantro, thyme, rosemary, sage, tarragon, chives
+  - Spices: cumin, paprika, cinnamon, nutmeg, turmeric, cayenne, curry, cardamom, cloves, mustard
 - **Phase 2: Bulk Content Factory** - Complete batch import pipeline:
   - `ingredient_matcher.py` - Shared parsing/matching logic for web app and bulk scraper
   - `bulk_scraper.py` - CLI tool: `python bulk_scraper.py urls.txt` (rate-limited, auto-match, saves unpublished)
