@@ -29,7 +29,7 @@ python meal_builder.py
 python auto_builder.py
 ```
 
-**Local database**: Set `DATABASE_URL` environment variable or the app falls back to local development mode.
+**Local database**: Requires `DATABASE_URL` environment variable pointing to Supabase (no local fallback - all data lives in Supabase).
 
 ## Architecture
 
@@ -48,7 +48,7 @@ python auto_builder.py
   - `/delete/<uuid>` - Deletes recipe (with confirmation)
   - `/about-rating` - Explains the carbon footprint rating system
 
-  Uses Jinja2 templates with Tailwind CSS. Ingredient matching uses a hybrid approach: token-based word matching + rapidfuzz fuzzy matching, displaying multiple candidates in a dropdown for user selection. Supports both English and Danish recipes with automatic language detection.
+  Uses Jinja2 templates with Tailwind CSS. Ingredient matching uses a hybrid approach: token-based word matching + rapidfuzz fuzzy matching against cached `CLIMATE_NAMES` (loaded from Supabase at startup), displaying multiple candidates in a dropdown for user selection. Supports English, Danish, and French ingredient names natively through the unified climate database.
 
 - **db.py** - Database module for PostgreSQL (Supabase):
   - `get_connection()` - Connect using DATABASE_URL env var
@@ -110,17 +110,17 @@ Uses Jinja2 templates with Tailwind CSS (via CDN) for a modern, responsive UI:
 
 ### Data Flow
 
-1. **Input**: User enters recipe manually OR scrapes from URL (extracts title, servings, ingredients, instructions)
-2. **Detect Language**: Auto-detect Danish (æøå, common words) vs English
-3. **Parse**: Preprocess informal units (handful, sprinkling, Danish spsk/tsk) → quantulum3 extracts quantities and units
-4. **Match**: Hybrid matching (token-based + rapidfuzz) against language-appropriate DB; user confirms/corrects via autocomplete
-5. **Calculate**: Convert to grams → lookup CO2-eq/kg and nutrition → sum totals
-6. **Save**: Store to PostgreSQL database with UUID, tags, source, notes, original ingredients
+1. **Input**: User enters recipe manually OR scrapes from URL (extracts title, servings, ingredients, og:image)
+2. **Parse**: Preprocess informal units (handful, sprinkling, Danish spsk/tsk) → quantulum3 extracts quantities and units
+3. **Match**: Hybrid matching (token-based + rapidfuzz) against cached `CLIMATE_NAMES` from Supabase; user confirms/corrects via autocomplete
+4. **Calculate**: Convert to grams → lookup CO2-eq/kg and nutrition from `climate_ingredients` table → sum totals
+5. **Save**: Store to PostgreSQL database with UUID, tags, source, original_line (for ML training), source_db (data provenance)
 
-### Data Files
+### Data Files (Source for Import Only)
 
-- **climate_data.xlsx** - Danish climate database with BOTH English (Name) and Danish (Navn) columns, plus nutrition data. ~540 ingredients. Primary source for import.
-- **climate_data_DK.xlsx** - Danish-only version (legacy, used for DataFrame fallback)
+These Excel files are used by `import_climate_data.py` to populate the Supabase `climate_ingredients` table. The web app reads exclusively from Supabase at runtime.
+
+- **climate_data.xlsx** - Danish climate database with BOTH English (Name) and Danish (Navn) columns, plus nutrition data. ~540 ingredients.
 - **AGRIBALYSE3.2_Tableur produits alimentaires_PublieAOUT25.xlsx** - French/EU Agribalyse database with French + English names, CO2 only (no nutrition). ~2,500 ingredients.
 
 ### Database Schema (PostgreSQL)
@@ -157,7 +157,7 @@ CREATE TABLE recipe_ingredients (
     unit TEXT,
     grams REAL,
     co2 REAL,
-    source_db TEXT           -- Which DB matched (danish/agribalyse/hestia/legacy)
+    source_db TEXT           -- Which DB matched (danish/agribalyse/hestia)
 );
 
 -- recipe_tags table
@@ -201,14 +201,13 @@ CREATE INDEX idx_climate_source ON climate_ingredients(source_db);
 ## Dependencies
 
 - flask - Web framework with Jinja2 templating
-- pandas - Excel data handling for climate_data.xlsx
 - quantulum3 - Parses quantities from natural language text (e.g., "200g beef")
 - recipe_scrapers - Extracts recipe data from website URLs
 - rapidfuzz - Fast fuzzy string matching for ingredient lookup
 - psycopg2-binary - PostgreSQL database adapter
 - gunicorn - Production WSGI server (for Render deployment)
 - setuptools - Required for pkg_resources (quantulum3 dependency)
-- openpyxl - Excel file reading
+- pandas, openpyxl - Excel handling (only used by import_climate_data.py, not needed at runtime)
 
 ## Vision & Long-term Goals
 
@@ -230,7 +229,7 @@ The app now uses a unified `climate_ingredients` table with waterfall lookup acr
 | 2nd | Agribalyse (ADEME) | France/EU | High | ~2,500 (CO2 only) |
 | 3rd | HESTIA/Oxford | Global | Medium | (Future) |
 
-**Waterfall Logic:** Always try Danish first (highest confidence), fall back to Agribalyse, then HESTIA, then legacy DataFrame.
+**Waterfall Logic:** Always prefer Danish (highest confidence), then Agribalyse, then HESTIA (future). Implemented via `confidence` column ordering in SQL queries.
 
 ### Paper Trail for ML Training
 
@@ -246,14 +245,13 @@ This enables future ML training to improve ingredient matching by learning from 
 
 ### Phase 2: Bulk Content Factory (NOT STARTED)
 
-**Goal:** Batch scrape recipes with auto-matching
+**Goal:** Batch scrape recipes with manual review
 
-1. **Extract shared matching logic** - Create `ingredient_matcher.py` from manual_app.py:57-164
+1. **Extract shared matching logic** - Create `ingredient_matcher.py` from manual_app.py
 2. **Create bulk scraper** (`bulk_scraper.py`):
    - Accept URL list → create import job → process each URL
    - Rate limiting: 3 seconds between requests
-   - Auto-approval: >= 75% confidence on ALL ingredients → publish
-   - Needs review: Any ingredient < 75% → save unpublished
+   - All scraped recipes saved as unpublished (no auto-approval until matching consistency proven)
 3. **Add database tables:**
    ```sql
    CREATE TABLE import_jobs (
@@ -273,15 +271,26 @@ This enables future ML training to improve ingredient matching by learning from 
        error_message TEXT
    );
    ```
-4. **Add recipe columns:** `import_job_id`, `is_published`, `language`, `domain`
+4. **Add recipe columns:**
+   - `origin` - Recipe source: `user_created`, `scraped`, `auto_scraped`
+   - `is_published` - Boolean, default true for user_created, false for scraped
+   - `import_job_id` - Links to batch import job (nullable)
+   - `language`, `domain` - Metadata from scraping
 
 ### Phase 3: Admin Review UI (NOT STARTED)
+
+**Password Protection:** All `/admin/*` routes behind simple password (env var `ADMIN_PASSWORD`)
 
 New routes:
 - `/admin/import` - Submit URLs (textarea, one per line)
 - `/admin/jobs` - List import jobs with status
 - `/admin/review` - Queue of unpublished recipes needing review
 - `/admin/review/<id>/approve` - Publish recipe
+
+**Edit Protection for Scraped Recipes:**
+- When user clicks "Edit" on a recipe with `origin != 'user_created'`, show password prompt
+- Password stored in env var `EDIT_PASSWORD` (can be same as ADMIN_PASSWORD)
+- Allows public viewing but prevents unauthorized edits to curated content
 
 ### Phase 4: Discovery Portal (NOT STARTED)
 
@@ -300,11 +309,13 @@ New routes:
 ---
 
 ### Recently Completed
+- **Supabase-only lookups** - Removed pandas/Excel dependency from runtime; all ingredient matching now uses cached `CLIMATE_NAMES` from Supabase. Simpler code (-115 lines), 3x more ingredients (2,957 vs ~540)
+- **Multi-language support** - EN, DK, FR ingredient names all searchable through unified `climate_ingredients` table
 - **Multi-Source Climate Engine** - Unified `climate_ingredients` table with 2,957 ingredients (499 Danish + 2,458 Agribalyse), waterfall lookup by confidence
 - **Paper trail for ML training** - Each ingredient stores `original_line` (raw text) and `source_db` (data source) for future ML training
 - **Import script** (`import_climate_data.py`) - Imports Danish DB and Agribalyse into unified table, supports `--dry-run` mode
 - **Removed recipe instructions** - Copyright-safe: only store og_image_url and site_rating, not full instructions
-- **Danish language support** - dual database (EN + DK), auto-detects language from æøå characters and Danish words, Danish unit preprocessing (spsk, tsk, stk, knivspids)
+- **Danish unit preprocessing** - spsk, tsk, stk, knivspids converted to standard units
 - **Custom autocomplete dropdown** - replaced browser datalist on summary page; shows candidates on focus, searches full DB on type, displays up to 20 results
 - **Additional units** - handful (30g), sprinkling (2g), quart (946ml), fixed pound-mass mapping for quantulum3
 - **Additional ingredient aliases** - shallots, double cream, tomato purée/pureé variants, whole milk
