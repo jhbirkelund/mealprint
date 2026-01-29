@@ -337,6 +337,9 @@ New routes:
 
 ### Future Enhancements
 - **Google Sheets import** - One-click import from a configured Google Sheet (publish as CSV, store URL in env var, button in admin pulls URLs)
+- **Automatic tagging** - Auto-generate tags during scraping:
+  - Meal type: Pull from recipe metadata (breakfast, lunch, dinner, dessert, snack, etc.)
+  - Nutrition: Based on calculated values (high protein, low carb, low calorie, etc.)
 - **HESTIA database integration** - Global fallback for exotic ingredients
 - **LLM fallback** - For < 40% confidence matches, call Claude API
 - **Learn from corrections** - Log when users change matches, suggest new aliases
