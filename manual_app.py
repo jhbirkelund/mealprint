@@ -411,10 +411,14 @@ def edit(recipe_id):
     all_ingredients = sorted(set(CLIMATE_NAMES))
     available_units = list(CONVERSIONS['units'].keys())
 
+    # Check for publish flag (from admin review)
+    publish = request.args.get('publish')
+
     return render_template('edit.html',
         recipe=r,
         all_ingredients=all_ingredients,
-        units=available_units
+        units=available_units,
+        publish=publish
     )
 
 @app.route('/update/<recipe_id>', methods=['POST'])
@@ -502,6 +506,17 @@ def update(recipe_id):
 
     # Update in database
     update_recipe_in_db(recipe_id, recipe_name, detailed_ingredients, total_co2, servings, nutrition, tags, source, og_image_url, site_rating, original_ingredients, rating)
+
+    # If publish flag is set (from admin edit), publish the recipe
+    publish = request.form.get('publish')
+    if publish:
+        from db import get_connection
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("UPDATE recipes SET is_published = TRUE WHERE id = %s", (recipe_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
 
     # Redirect to the recipe page
     return redirect(f'/recipe/{recipe_id}')

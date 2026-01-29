@@ -135,6 +135,11 @@
             <h3 class="font-semibold text-slate-900 mb-4">Actions</h3>
 
             <div class="space-y-3">
+                <a href="{{ url_for('edit', recipe_id=recipe.id) }}?publish=1"
+                    class="block w-full bg-amber-500 text-white py-2 px-4 rounded-lg hover:bg-amber-600 font-medium text-center">
+                    Edit & Publish
+                </a>
+
                 <form method="POST" action="{{ url_for('admin.approve_recipe', recipe_id=recipe.id) }}">
                     <button type="submit"
                         class="w-full bg-emerald-600 text-white py-2 px-4 rounded-lg hover:bg-emerald-700 font-medium">

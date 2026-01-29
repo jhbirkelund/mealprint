@@ -13,6 +13,9 @@
 
     <!-- Form -->
     <form method="POST" action="/update/{{ recipe.id }}" id="edit-form">
+        {% if publish %}
+        <input type="hidden" name="publish" value="1">
+        {% endif %}
         <!-- Basic Info Card -->
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
             <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-6">Basic Info</h2>
