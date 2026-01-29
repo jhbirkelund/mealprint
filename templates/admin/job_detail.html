@@ -1,0 +1,85 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Job {{ job.id[:8] }}{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div>
+        <a href="{{ url_for('admin.jobs_list') }}" class="text-slate-500 hover:text-slate-700 text-sm">&larr; Back to Jobs</a>
+        <h1 class="text-2xl font-semibold text-slate-900 mt-1">Import Job</h1>
+    </div>
+
+    {% if job.status == 'pending' %}
+        <form method="POST" action="{{ url_for('admin.run_job', job_id=job.id) }}">
+            <button type="submit"
+                class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium text-sm">
+                Run Job
+            </button>
+        </form>
+    {% endif %}
+</div>
+
+<!-- Job Stats -->
+<div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div class="text-sm text-slate-500">Status</div>
+        <div class="font-semibold mt-1">
+            {% if job.status == 'completed' %}
+                <span class="text-emerald-600">Completed</span>
+            {% elif job.status == 'processing' %}
+                <span class="text-amber-600">Processing</span>
+            {% else %}
+                <span class="text-slate-600">Pending</span>
+            {% endif %}
+        </div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div class="text-sm text-slate-500">Total URLs</div>
+        <div class="font-semibold mt-1">{{ job.total_urls }}</div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div class="text-sm text-slate-500">Processed</div>
+        <div class="font-semibold mt-1">{{ job.processed_count }}</div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div class="text-sm text-slate-500">Success</div>
+        <div class="font-semibold mt-1 text-emerald-600">{{ job.success_count }}</div>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+        <div class="text-sm text-slate-500">Errors</div>
+        <div class="font-semibold mt-1 text-rose-600">{{ job.error_count }}</div>
+    </div>
+</div>
+
+<!-- Job Items -->
+<div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="px-4 py-3 border-b border-slate-200 bg-slate-50">
+        <h2 class="font-medium text-slate-900">URLs</h2>
+    </div>
+    <div class="divide-y divide-slate-100">
+        {% for item in job.items %}
+        <div class="px-4 py-3 flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+                <div class="text-sm font-mono text-slate-600 truncate">{{ item.url }}</div>
+                {% if item.error_message %}
+                    <div class="text-xs text-rose-600 mt-1">{{ item.error_message }}</div>
+                {% endif %}
+            </div>
+            <div class="ml-4 flex items-center space-x-3">
+                {% if item.status == 'success' %}
+                    <span class="px-2 py-1 bg-emerald-100 text-emerald-800 rounded text-xs font-medium">Success</span>
+                    {% if item.recipe_id %}
+                        <a href="{{ url_for('admin.review_recipe', recipe_id=item.recipe_id) }}"
+                            class="text-emerald-600 hover:text-emerald-800 text-xs font-medium">View</a>
+                    {% endif %}
+                {% elif item.status == 'error' %}
+                    <span class="px-2 py-1 bg-rose-100 text-rose-800 rounded text-xs font-medium">Error</span>
+                {% else %}
+                    <span class="px-2 py-1 bg-slate-100 text-slate-600 rounded text-xs font-medium">Pending</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

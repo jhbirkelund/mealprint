@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold text-slate-900 mb-6">Dashboard</h1>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    <!-- Published Recipes -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div class="text-3xl font-bold text-emerald-600">{{ published_count }}</div>
+        <div class="text-slate-600 text-sm mt-1">Published Recipes</div>
+    </div>
+
+    <!-- Pending Review -->
+    <a href="{{ url_for('admin.review_queue') }}" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:border-amber-300 transition-colors">
+        <div class="text-3xl font-bold text-amber-600">{{ pending_count }}</div>
+        <div class="text-slate-600 text-sm mt-1">Pending Review</div>
+    </a>
+
+    <!-- Import Jobs -->
+    <a href="{{ url_for('admin.jobs_list') }}" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:border-slate-300 transition-colors">
+        <div class="text-3xl font-bold text-slate-700">{{ jobs_count }}</div>
+        <div class="text-slate-600 text-sm mt-1">Import Jobs</div>
+    </a>
+</div>
+
+<!-- Quick Actions -->
+<h2 class="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>
+<div class="flex gap-4">
+    <a href="{{ url_for('admin.import_urls') }}"
+        class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium">
+        Import URLs
+    </a>
+    <a href="{{ url_for('admin.review_queue') }}"
+        class="bg-slate-200 text-slate-800 px-4 py-2 rounded-lg hover:bg-slate-300 font-medium">
+        Review Queue
+    </a>
+</div>
+{% endblock %}

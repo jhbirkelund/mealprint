@@ -317,6 +317,79 @@ def run_import_job(urls, verbose=True):
     return job_id
 
 
+def process_import_job(job_id):
+    """
+    Process an existing import job (called from admin UI).
+
+    This runs in a background thread, processing URLs one by one.
+    Each completed recipe immediately appears in the review queue.
+    """
+    from db import get_import_job
+
+    # Load climate names
+    climate_names = load_climate_names()
+
+    # Get the job
+    job = get_import_job(job_id)
+    if not job:
+        return
+
+    # Mark as processing
+    start_import_job(job_id)
+
+    # Process each pending URL
+    while True:
+        pending = get_pending_import_items(job_id, limit=1)
+        if not pending:
+            break
+
+        item = pending[0]
+        url = item['url']
+        item_id = item['id']
+
+        try:
+            # Scrape the recipe
+            recipe_data = scrape_recipe(url)
+            if not recipe_data:
+                raise Exception("Could not extract recipe data")
+
+            # Process and calculate CO2
+            calculated = process_recipe(recipe_data, climate_names)
+            if not calculated:
+                raise Exception("Could not calculate CO2 (no matching ingredients)")
+
+            # Save to database as unpublished
+            recipe_id = save_recipe_to_db(
+                recipe_name=recipe_data['name'],
+                ingredients=calculated['ingredients'],
+                total_co2=calculated['total_co2'],
+                servings=recipe_data['servings'],
+                nutrition=calculated['nutrition'],
+                tags=[],
+                source=recipe_data['source'],
+                og_image_url=recipe_data['og_image_url'],
+                site_rating=recipe_data['site_rating'],
+                original_ingredients=recipe_data['original_ingredients'],
+                rating=calculated['rating'],
+                origin='bulk_scraped',
+                is_published=False,
+                import_job_id=job_id,
+                language=recipe_data['language'],
+                domain=recipe_data['domain'],
+                recipe_creator='admin'
+            )
+
+            # Mark item as success
+            update_import_item(item_id, 'success', recipe_id=recipe_id)
+
+        except Exception as e:
+            # Mark item as error
+            update_import_item(item_id, 'error', error_message=str(e))
+
+        # Rate limiting between requests
+        time.sleep(RATE_LIMIT_SECONDS)
+
+
 def main():
     """CLI entry point."""
     if len(sys.argv) < 2:

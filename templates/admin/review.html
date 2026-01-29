@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Review Queue{% endblock %}
+
+{% block content %}
+<h1 class="text-2xl font-semibold text-slate-900 mb-6">Review Queue</h1>
+
+{% if recipes %}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="w-full">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr>
+                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600">Recipe</th>
+                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600">CO2/serving</th>
+                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600">Source</th>
+                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600">Language</th>
+                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600">Created</th>
+                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for recipe in recipes %}
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3">
+                        <div class="font-medium text-slate-900">{{ recipe.name }}</div>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if recipe.co2_per_serving %}
+                            {% if recipe.co2_per_serving < 1.0 %}
+                                <span class="text-emerald-600 font-medium">{{ "%.2f"|format(recipe.co2_per_serving) }} kg</span>
+                            {% elif recipe.co2_per_serving < 1.8 %}
+                                <span class="text-amber-600 font-medium">{{ "%.2f"|format(recipe.co2_per_serving) }} kg</span>
+                            {% else %}
+                                <span class="text-rose-600 font-medium">{{ "%.2f"|format(recipe.co2_per_serving) }} kg</span>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-slate-400">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-slate-600">{{ recipe.domain or '-' }}</td>
+                    <td class="px-4 py-3 text-sm text-slate-600">{{ recipe.language or '-' }}</td>
+                    <td class="px-4 py-3 text-sm text-slate-500">{{ recipe.created_at.strftime('%Y-%m-%d') if recipe.created_at else '-' }}</td>
+                    <td class="px-4 py-3 text-right">
+                        <a href="{{ url_for('admin.review_recipe', recipe_id=recipe.id) }}"
+                            class="text-emerald-600 hover:text-emerald-800 text-sm font-medium">Review</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
+        <p class="text-slate-500">No recipes pending review.</p>
+    </div>
+{% endif %}
+{% endblock %}

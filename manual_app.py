@@ -6,8 +6,13 @@ from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
 from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name, get_all_climate_ingredients
+from admin import admin_bp
 
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+
+# Register admin blueprint
+app.register_blueprint(admin_bp)
 
 # Initialize database tables on startup
 try:
