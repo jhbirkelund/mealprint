@@ -341,6 +341,7 @@ New routes:
 - **Learn from corrections** - Log when users change matches, suggest new aliases
 - **Percentile-based ratings** - "Low for a dessert" context-aware ratings
 - **Danish language UI** - Full i18n with language switcher
+- **Smart unit inference** - Intelligently determine default unit when missing (e.g., "2 carrots" → piece, "200 flour" → grams)
 
 ---
 
