@@ -3,7 +3,7 @@ services:
     name: mealprint
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn manual_app:app
+    startCommand: gunicorn manual_app:app --timeout 120 --bind 0.0.0.0:10000
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"
