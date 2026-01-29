@@ -10,6 +10,7 @@ Password-protected admin interface for:
 import os
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+import json
 from db import (
     get_all_import_jobs,
     get_import_job,
@@ -17,7 +18,9 @@ from db import (
     start_import_job,
     get_all_recipes,
     get_recipe_by_id,
-    get_connection
+    get_connection,
+    get_all_climate_ingredients,
+    get_ingredient_by_name
 )
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
@@ -176,6 +179,14 @@ def review_queue():
     return render_template('admin/review.html', recipes=recipes)
 
 
+def load_units():
+    """Load units from config file."""
+    config_path = os.path.join(os.path.dirname(__file__), 'config', 'units.json')
+    with open(config_path) as f:
+        config = json.load(f)
+    return list(config['conversions'].keys())
+
+
 @admin_bp.route('/review/<recipe_id>')
 @admin_required
 def review_recipe(recipe_id):
@@ -183,7 +194,154 @@ def review_recipe(recipe_id):
     recipe = get_recipe_by_id(recipe_id)
     if not recipe:
         return redirect(url_for('admin.review_queue'))
-    return render_template('admin/review_detail.html', recipe=recipe)
+
+    units = load_units()
+    all_ingredients_data = get_all_climate_ingredients()
+    all_ingredients = [ing['name'] for ing in all_ingredients_data]
+
+    return render_template('admin/review_detail.html',
+        recipe=recipe,
+        units=units,
+        all_ingredients=all_ingredients
+    )
+
+
+@admin_bp.route('/review/<recipe_id>/save', methods=['POST'])
+@admin_required
+def save_recipe(recipe_id):
+    """Save edited recipe from admin review."""
+    from recipe_manager import get_weight_in_grams
+
+    # Get form data
+    servings = float(request.form.get('servings', 1))
+    tags_str = request.form.get('tags', '')
+    action = request.form.get('action', 'save_draft')
+
+    # Parse tags
+    tags = [t.strip() for t in tags_str.split(',') if t.strip()]
+
+    # Get ingredient data (parallel arrays)
+    amounts = request.form.getlist('amounts')
+    units = request.form.getlist('units')
+    selected_matches = request.form.getlist('selected_matches')
+    original_lines = request.form.getlist('original_lines')
+
+    # Calculate CO2 for each ingredient
+    ingredients = []
+    total_co2 = 0.0
+    total_nutrition = {'kcal': 0, 'fat': 0, 'carbs': 0, 'protein': 0}
+
+    for i in range(len(amounts)):
+        amount = float(amounts[i])
+        unit = units[i]
+        item_name = selected_matches[i]
+        original_line = original_lines[i] if i < len(original_lines) else ''
+
+        # Convert to grams
+        grams = get_weight_in_grams(amount, unit, item_name)
+
+        # Look up climate data
+        climate_data = get_ingredient_by_name(item_name)
+        if climate_data:
+            co2_per_kg = climate_data.get('co2_per_kg', 0)
+            co2 = (grams / 1000) * co2_per_kg
+            source_db = climate_data.get('source_db', 'unknown')
+
+            # Nutrition (if available)
+            if climate_data.get('energy_kj'):
+                factor = grams / 1000  # per kg to actual amount
+                total_nutrition['kcal'] += (climate_data.get('energy_kj', 0) or 0) * factor / 4.184
+                total_nutrition['fat'] += (climate_data.get('fat_g', 0) or 0) * factor
+                total_nutrition['carbs'] += (climate_data.get('carbs_g', 0) or 0) * factor
+                total_nutrition['protein'] += (climate_data.get('protein_g', 0) or 0) * factor
+        else:
+            co2 = 0
+            source_db = 'not_found'
+
+        total_co2 += co2
+        ingredients.append({
+            'original_line': original_line,
+            'item': item_name,
+            'amount': amount,
+            'unit': unit,
+            'grams': grams,
+            'co2': co2,
+            'source_db': source_db
+        })
+
+    co2_per_serving = total_co2 / servings if servings > 0 else total_co2
+
+    # Calculate rating
+    if co2_per_serving < 1.0:
+        rating_label, rating_color, rating_emoji = 'Low Impact', 'emerald', '🌱'
+    elif co2_per_serving < 1.8:
+        rating_label, rating_color, rating_emoji = 'Medium Impact', 'amber', '🌿'
+    else:
+        rating_label, rating_color, rating_emoji = 'High Impact', 'rose', '🔥'
+
+    # Nutrition per serving
+    nutrition_per_serving = {
+        'kcal': round(total_nutrition['kcal'] / servings, 1) if servings > 0 else 0,
+        'fat': round(total_nutrition['fat'] / servings, 1) if servings > 0 else 0,
+        'carbs': round(total_nutrition['carbs'] / servings, 1) if servings > 0 else 0,
+        'protein': round(total_nutrition['protein'] / servings, 1) if servings > 0 else 0
+    }
+
+    # Determine publish status
+    is_published = action == 'save_publish'
+
+    # Update database
+    conn = get_connection()
+    cur = conn.cursor()
+
+    # Update recipe
+    cur.execute('''
+        UPDATE recipes SET
+            servings = %s,
+            total_co2 = %s,
+            co2_per_serving = %s,
+            rating_label = %s,
+            rating_color = %s,
+            rating_emoji = %s,
+            nutrition_kcal = %s,
+            nutrition_fat = %s,
+            nutrition_carbs = %s,
+            nutrition_protein = %s,
+            is_published = %s
+        WHERE id = %s
+    ''', (
+        servings, total_co2, co2_per_serving,
+        rating_label, rating_color, rating_emoji,
+        nutrition_per_serving['kcal'], nutrition_per_serving['fat'],
+        nutrition_per_serving['carbs'], nutrition_per_serving['protein'],
+        is_published, recipe_id
+    ))
+
+    # Delete old ingredients
+    cur.execute('DELETE FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
+
+    # Insert new ingredients
+    for ing in ingredients:
+        cur.execute('''
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (recipe_id, ing['original_line'], ing['item'], ing['amount'], ing['unit'], ing['grams'], ing['co2'], ing['source_db']))
+
+    # Delete old tags and insert new ones
+    cur.execute('DELETE FROM recipe_tags WHERE recipe_id = %s', (recipe_id,))
+    for tag in tags:
+        cur.execute('INSERT INTO recipe_tags (recipe_id, tag) VALUES (%s, %s)', (recipe_id, tag))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    if is_published:
+        flash('Recipe saved and published', 'success')
+        return redirect(url_for('admin.review_queue'))
+    else:
+        flash('Recipe saved as draft', 'success')
+        return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
 
 
 @admin_bp.route('/review/<recipe_id>/approve', methods=['POST'])
