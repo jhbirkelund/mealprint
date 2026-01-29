@@ -130,7 +130,8 @@
         "tomato purée": "Tomato paste, concentrated",
         "tomato pureé": "Tomato paste, concentrated",
         "tomato paste": "Tomato paste, concentrated",
-        "tomato passata": "Tomato paste, concentrated",
+        "passata": "Tomato, peeled, canned",
+        "tomato passata": "Tomato, peeled, canned",
         "canned tomatoes": "Tomato, peeled, canned",
         "diced tomatoes": "Tomato, peeled, canned",
         "crushed tomatoes": "Tomato, peeled, canned",
@@ -148,6 +149,19 @@
         "farfalle": "Pasta, raw",
         "pasta": "Pasta, raw",
         "noodles": "Pasta, raw",
-        "rice noodles": "Rice noodles"
+        "rice noodles": "Rice noodles",
+
+        "butternut squash": "Squash, butternut, pulp, raw",
+        "butternut": "Squash, butternut, pulp, raw",
+        "hokkaido": "Red kuri squash, pulp, raw",
+        "hokkaido pumpkin": "Red kuri squash, pulp, raw",
+        "red kuri squash": "Red kuri squash, pulp, raw",
+        "kabocha": "Pumpkin, raw",
+        "kabocha squash": "Pumpkin, raw",
+        "acorn squash": "Squash, raw",
+        "delicata squash": "Squash, raw",
+        "spaghetti squash": "Squash, spaghetti, pulp, raw",
+        "pumpkin": "Pumpkin, raw",
+        "squash": "Squash, raw"
     }
 }

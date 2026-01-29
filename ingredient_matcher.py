@@ -13,6 +13,7 @@ from db import get_ingredient_by_name, get_all_climate_ingredients
 
 
 # Informal units that quantulum3 doesn't recognize - map to standard units
+# Note: Danish spoon units (tsk, spsk) are now in config/units.json unit_map
 INFORMAL_UNITS = {
     # English
     'handful': '30g',
@@ -20,14 +21,6 @@ INFORMAL_UNITS = {
     'sprinkling': '2g',
     'sprinkle': '2g',
     # Danish
-    'spsk': '15ml',      # spiseskefuld (tablespoon)
-    'spsk.': '15ml',
-    'spiseskefuld': '15ml',
-    'spiseskefulde': '15ml',
-    'tsk': '5ml',        # teskefuld (teaspoon)
-    'tsk.': '5ml',
-    'teskefuld': '5ml',
-    'teskefulde': '5ml',
     'stk': '1 piece',    # styk (piece)
     'stk.': '1 piece',
     'knivspids': '0.5g', # knife tip
