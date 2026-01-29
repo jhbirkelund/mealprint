@@ -87,7 +87,9 @@
     </div>
     {% endif %}
 
-    <!-- Stats Row -->
+    <!-- Stats Row - only show nutrition if all ingredients have nutrition data (Danish DB) -->
+    {% set has_complete_nutrition = recipe.ingredients|rejectattr('source_db', 'equalto', 'danish')|list|length == 0 %}
+    {% if has_complete_nutrition and recipe.metadata and recipe.metadata.nutrition %}
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 text-center">
             <p class="text-3xl font-semibold text-slate-900">{{ recipe.metadata.nutrition.kcal|int }}</p>
@@ -106,6 +108,7 @@
             <p class="text-slate-500 text-sm mt-1">fat</p>
         </div>
     </div>
+    {% endif %}
 
     <!-- Ingredients Card -->
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8">

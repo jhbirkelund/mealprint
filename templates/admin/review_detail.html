@@ -139,8 +139,9 @@
             </div>
         </div>
 
-        <!-- Nutrition -->
-        {% if recipe.metadata and recipe.metadata.nutrition %}
+        <!-- Nutrition - only show if all ingredients have nutrition data (Danish DB) -->
+        {% set has_complete_nutrition = recipe.ingredients|rejectattr('source_db', 'equalto', 'danish')|list|length == 0 %}
+        {% if has_complete_nutrition and recipe.metadata and recipe.metadata.nutrition %}
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
             <h3 class="font-semibold text-slate-900 mb-3">Nutrition (per serving)</h3>
             <div class="space-y-2 text-sm">
