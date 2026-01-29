@@ -620,8 +620,50 @@ def get_ingredient_by_name(name):
 # Import Jobs - Bulk Scraping Management
 # =============================================================================
 
+def recipe_exists_by_source(source_url):
+    """Check if a recipe with this source URL already exists."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT id FROM recipes WHERE source = %s LIMIT 1', (source_url,))
+    result = cur.fetchone()
+    cur.close()
+    conn.close()
+    return result is not None
+
+
 def create_import_job(urls):
-    """Create a new import job with a list of URLs to process."""
+    """Create a new import job with a list of URLs to process.
+
+    Deduplicates URLs and skips any that already exist as recipes.
+    Returns (job_id, stats) where stats contains counts of added/skipped URLs.
+    """
+    # Deduplicate URLs (preserve order)
+    seen = set()
+    unique_urls = []
+    for url in urls:
+        url = url.strip()
+        if url and url not in seen:
+            seen.add(url)
+            unique_urls.append(url)
+
+    # Filter out URLs that already exist as recipes
+    new_urls = []
+    skipped_existing = 0
+    for url in unique_urls:
+        if recipe_exists_by_source(url):
+            skipped_existing += 1
+        else:
+            new_urls.append(url)
+
+    # If no new URLs, don't create a job
+    if not new_urls:
+        return None, {
+            'total_submitted': len(urls),
+            'duplicates_in_list': len(urls) - len(unique_urls),
+            'already_scraped': skipped_existing,
+            'added': 0
+        }
+
     job_id = str(uuid.uuid4())
 
     conn = get_connection()
@@ -631,20 +673,25 @@ def create_import_job(urls):
     cur.execute('''
         INSERT INTO import_jobs (id, status, total_urls)
         VALUES (%s, 'pending', %s)
-    ''', (job_id, len(urls)))
+    ''', (job_id, len(new_urls)))
 
     # Add each URL as an import item
-    for url in urls:
+    for url in new_urls:
         cur.execute('''
             INSERT INTO import_items (job_id, url, status)
             VALUES (%s, %s, 'pending')
-        ''', (job_id, url.strip()))
+        ''', (job_id, url))
 
     conn.commit()
     cur.close()
     conn.close()
 
-    return job_id
+    return job_id, {
+        'total_submitted': len(urls),
+        'duplicates_in_list': len(urls) - len(unique_urls),
+        'already_scraped': skipped_existing,
+        'added': len(new_urls)
+    }
 
 
 def get_import_job(job_id):

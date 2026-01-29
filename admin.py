@@ -95,8 +95,17 @@ def import_urls():
         if not urls:
             return render_template('admin/import.html', error='No valid URLs provided')
 
-        # Create import job
-        job_id = create_import_job(urls)
+        # Create import job (returns tuple: job_id, stats)
+        job_id, stats = create_import_job(urls)
+
+        if job_id is None:
+            # All URLs were duplicates or already scraped
+            flash(f"No new URLs to import. {stats['duplicates_in_list']} duplicates, {stats['already_scraped']} already scraped.", 'error')
+            return render_template('admin/import.html')
+
+        # Show stats about what was filtered
+        if stats['duplicates_in_list'] > 0 or stats['already_scraped'] > 0:
+            flash(f"Added {stats['added']} URLs. Skipped {stats['duplicates_in_list']} duplicates, {stats['already_scraped']} already scraped.", 'success')
 
         return redirect(url_for('admin.job_detail', job_id=job_id))
 
