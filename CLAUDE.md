@@ -357,6 +357,10 @@ Implemented routes:
 ---
 
 ### Recently Completed
+- **Ingredient parsing fixes** - Now parses ingredients without quantities (e.g., "salt", "pepper to taste") by defaulting to 1 piece
+- **Nutrition calculation fix** - Was using grams/1000 (per kg), now correctly uses grams/100 (database stores per 100g)
+- **Ingredient lookup fix** - Now matches COALESCE display names (what users see in autocomplete), not just individual columns
+- **Hide incomplete nutrition** - Nutrition cards only display when ALL ingredients are from Danish DB (Agribalyse has no nutrition data)
 - **Phase 3: Admin Review UI** - Complete admin interface:
   - Password-protected admin area with session-based auth
   - Bulk URL import with background job processing
