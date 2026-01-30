@@ -75,7 +75,8 @@ python auto_builder.py
   - `calculate_ingredient(amount, unit, name)` - Calculate CO2/nutrition for single ingredient
   - `calculate_recipe_totals(ingredients)` - Sum CO2 and nutrition for full recipe
   - `auto_match_ingredients(raw_text)` - Parse and auto-select best matches (for bulk scraper)
-  - `load_climate_names()` - Load ingredient names from Supabase
+  - `load_climate_names()` - Load ingredient names from Supabase (all languages: EN/DK/FR)
+  - `get_ingredients_for_autocomplete()` - Build ingredient list with source info for dropdowns
 
 - **bulk_scraper.py** - Batch recipe import tool:
   - `run_import_job(urls)` - Process URL list, save as unpublished recipes
@@ -93,6 +94,10 @@ python auto_builder.py
   - `get_stats()` - Show import statistics
   - `dry_run()` - Test parsing without database connection
   - Run: `python import_climate_data.py` (requires DATABASE_URL) or `python import_climate_data.py --dry-run`
+
+- **migrate_source_names.py** - One-time migration to rename source_db values:
+  - Renames `danish` → `ClimateDB`, `agribalyse` → `Agribalyse`, `hestia` → `Hestia`
+  - Run: `python migrate_source_names.py` (requires DATABASE_URL)
 
 - **recipe_manager.py** - Shared utilities module containing:
   - `save_recipe()` - Persists recipes to recipes.json with full schema (id, tags, source, notes, original_ingredients, nutrition)
@@ -130,6 +135,14 @@ Uses Jinja2 templates with Tailwind CSS (via CDN) for a modern, responsive UI:
 **Template Patterns:**
 - Pass complex data to hidden form fields using single-quoted attributes: `value='{{ data | tojson }}'` (single quotes avoid conflicts with JSON's double quotes)
 - Custom autocomplete: use `.ingredient-input` class with adjacent `.autocomplete-dropdown` div; JS handles filtering and selection
+
+### Static Files (static/)
+
+- **js/autocomplete.js** - Shared autocomplete module used by summary.html, edit.html, and admin review
+  - `setupIngredientAutocomplete(allIngredients, options)` - Initialize autocomplete on `.ingredient-input` elements
+  - Options: `showCandidatesOnFocus` (boolean) - Show suggested candidates when input is focused
+  - Displays source in brackets: "Beef, mince (ClimateDB)"
+  - Filters by all search words, shows up to 20 matches
 
 ### Data Flow
 
@@ -186,7 +199,7 @@ CREATE TABLE recipe_ingredients (
     unit TEXT,
     grams REAL,
     co2 REAL,
-    source_db TEXT           -- Which DB matched (danish/agribalyse/hestia)
+    source_db TEXT           -- Which DB matched (ClimateDB/Agribalyse/Hestia)
 );
 
 -- recipe_tags table
@@ -203,7 +216,7 @@ CREATE TABLE climate_ingredients (
     name_dk TEXT,            -- Danish name
     name_fr TEXT,            -- French name (Agribalyse)
     co2_per_kg REAL NOT NULL,
-    source_db TEXT NOT NULL, -- 'danish', 'agribalyse', 'hestia'
+    source_db TEXT NOT NULL, -- 'ClimateDB', 'Agribalyse', 'Hestia'
     source_id TEXT,          -- Original ID in source database
     confidence TEXT DEFAULT 'high',  -- 'highest', 'high', 'medium'
     category TEXT,
@@ -278,19 +291,19 @@ Mealprint is pivoting from a simple recipe calculator to a high-volume, searchab
 
 The app now uses a unified `climate_ingredients` table with waterfall lookup across multiple databases:
 
-| Priority | Database | Region | Confidence | Ingredients |
-|----------|----------|--------|------------|-------------|
-| 1st | Den Store Klimadatabase | Denmark | Highest | ~500 (with nutrition) |
-| 2nd | Agribalyse (ADEME) | France/EU | High | ~2,500 (CO2 only) |
-| 3rd | HESTIA/Oxford | Global | Medium | (Future) |
+| Priority | Database | source_db | Region | Confidence | Ingredients |
+|----------|----------|-----------|--------|------------|-------------|
+| 1st | Den Store Klimadatabase | `ClimateDB` | Denmark | Highest | ~500 (with nutrition) |
+| 2nd | Agribalyse (ADEME) | `Agribalyse` | France/EU | High | ~2,500 (CO2 only) |
+| 3rd | HESTIA/Oxford | `Hestia` | Global | Medium | (Future) |
 
-**Waterfall Logic:** Always prefer Danish (highest confidence), then Agribalyse, then HESTIA (future). Implemented via `confidence` column ordering in SQL queries.
+**Waterfall Logic:** Always prefer ClimateDB (highest confidence), then Agribalyse, then Hestia (future). Implemented via `confidence` column ordering in SQL queries.
 
 ### Paper Trail for ML Training
 
 Each ingredient match now stores:
 - `original_line` - The raw ingredient text from the recipe (e.g., "2 cups diced tomatoes")
-- `source_db` - Which database the match came from (danish/agribalyse/hestia/legacy)
+- `source_db` - Which database the match came from (ClimateDB/Agribalyse/Hestia)
 
 This enables future ML training to improve ingredient matching by learning from human corrections.
 
@@ -329,6 +342,7 @@ Implemented routes:
 - `/admin/review/<id>/save` - Save changes with CO2 recalculation, publish or save as draft
 - `/admin/review/<id>/approve` - Quick publish without editing
 - `/admin/review/<id>/reject` - Delete recipe
+- `/admin/review/<id>/rescrape` - Re-fetch recipe data from source URL
 
 **Duplicate URL Handling:**
 - Deduplicates URLs within submitted batch
@@ -357,6 +371,12 @@ Implemented routes:
 ---
 
 ### Recently Completed
+- **Shared autocomplete module** - Consolidated autocomplete JS into `static/js/autocomplete.js`, used by all ingredient editing UIs (summary, edit, admin review). Reduces code duplication.
+- **Source display in autocomplete** - Ingredient dropdowns now show source in brackets: "Beef, mince (ClimateDB)". Helps users understand data provenance.
+- **Renamed data sources** - Changed source_db values from `danish`/`agribalyse` to `ClimateDB`/`Agribalyse` for clarity. Migration script: `migrate_source_names.py`
+- **Re-scrape functionality** - Admin can re-fetch recipe data from source URL via `/admin/review/<id>/rescrape` button
+- **Rating system consolidation** - Admin review now uses shared `calculate_rating()` from recipe_manager.py (5-level: Very Low/Low/Medium/High/Very High)
+- **Multi-language ingredient search** - Searching now matches against all language variants (EN/DK/FR). Danish ingredients like "oksekød" now findable.
 - **Ingredient parsing fixes** - Now parses ingredients without quantities (e.g., "salt", "pepper to taste") by defaulting to 1 piece
 - **Nutrition calculation fix** - Was using grams/1000 (per kg), now correctly uses grams/100 (database stores per 100g)
 - **Ingredient lookup fix** - Now matches COALESCE display names (what users see in autocomplete), not just individual columns
