@@ -131,6 +131,7 @@ Uses Jinja2 templates with Tailwind CSS (via CDN) for a modern, responsive UI:
 - Accent color: `emerald-500` for buttons and interactive elements
 - CO2 color coding: emerald (<1.0), amber (1.0-1.8), rose (>1.8 kg)
 - Rating badges: `bg-emerald-100 text-emerald-900` (darker text for accessibility)
+- Logo: "Mealprint" uses Sour Gummy font (Medium 500, color #4A7C59)
 
 **Template Patterns:**
 - Pass complex data to hidden form fields using single-quoted attributes: `value='{{ data | tojson }}'` (single quotes avoid conflicts with JSON's double quotes)
@@ -371,6 +372,8 @@ Implemented routes:
 ---
 
 ### Recently Completed
+- **Recipe thumbnails on Explore page** - Cards now show og-image thumbnail on the right (96x96px), with CO2 below title
+- **Sour Gummy logo font** - "Mealprint" title uses Sour Gummy font (Medium 500, #4A7C59) in both main site and admin
 - **Shared autocomplete module** - Consolidated autocomplete JS into `static/js/autocomplete.js`, used by all ingredient editing UIs (summary, edit, admin review). Reduces code duplication.
 - **Source display in autocomplete** - Ingredient dropdowns now show source in brackets: "Beef, mince (ClimateDB)". Helps users understand data provenance.
 - **Renamed data sources** - Changed source_db values from `danish`/`agribalyse` to `ClimateDB`/`Agribalyse` for clarity. Migration script: `migrate_source_names.py`
