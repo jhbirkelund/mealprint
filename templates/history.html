@@ -45,40 +45,43 @@
     <!-- Recipe Grid -->
     <div id="recipeGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% for r in recipes %}
-        <a href="/recipe/{{ r.id }}" class="recipe-card bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition group"
+        <a href="/recipe/{{ r.id }}" class="recipe-card bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition group flex gap-4"
             data-name="{{ r.name|lower }}"
             data-tags="{{ r.tags|join(',') if r.tags else '' }}"
             data-co2="{{ r.co2_per_serving }}"
             data-index="{{ loop.index }}">
-            <div class="flex items-start justify-between">
-                <div class="flex-1 min-w-0">
-                    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-emerald-600 transition truncate">{{ r.name }}</h2>
-                    {% if r.tags %}
-                    <div class="flex flex-wrap gap-1 mt-2">
-                        {% for tag in r.tags[:3] %}
-                        <span class="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{{ tag }}</span>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
-                </div>
-                <div class="text-right ml-4 flex-shrink-0">
-                    <p class="text-2xl font-bold
+            <div class="flex-1 min-w-0">
+                <h2 class="text-lg font-semibold text-slate-900 group-hover:text-emerald-600 transition truncate">{{ r.name }}</h2>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="text-2xl font-bold
                         {% if r.co2_per_serving < 1.0 %}text-emerald-500
                         {% elif r.co2_per_serving < 1.8 %}text-amber-500
                         {% else %}text-rose-500{% endif %}">
                         {{ "%.2f"|format(r.co2_per_serving) }}
-                    </p>
-                    <p class="text-slate-400 text-xs">kg CO₂</p>
+                    </span>
+                    <span class="text-slate-400 text-xs">kg CO₂</span>
                 </div>
+                {% if r.tags %}
+                <div class="flex flex-wrap gap-1 mt-2">
+                    {% for tag in r.tags[:3] %}
+                    <span class="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{{ tag }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% if r.rating and r.rating.label %}
+                <div class="mt-2">
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-medium
+                        {% if 'Low' in r.rating.label %}bg-emerald-100 text-emerald-900
+                        {% elif 'Medium' in r.rating.label %}bg-amber-100 text-amber-900
+                        {% else %}bg-rose-100 text-rose-900{% endif %}">
+                        {{ r.rating.emoji }} {{ r.rating.label }}
+                    </span>
+                </div>
+                {% endif %}
             </div>
-            {% if r.rating and r.rating.label %}
-            <div class="mt-4">
-                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-medium
-                    {% if 'Low' in r.rating.label %}bg-emerald-100 text-emerald-900
-                    {% elif 'Medium' in r.rating.label %}bg-amber-100 text-amber-900
-                    {% else %}bg-rose-100 text-rose-900{% endif %}">
-                    {{ r.rating.emoji }} {{ r.rating.label }}
-                </span>
+            {% if r.og_image_url %}
+            <div class="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100">
+                <img src="{{ r.og_image_url }}" alt="{{ r.name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
             </div>
             {% endif %}
         </a>
