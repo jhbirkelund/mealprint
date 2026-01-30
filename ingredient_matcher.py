@@ -47,6 +47,35 @@ def load_climate_names():
         return []
 
 
+def get_ingredients_for_autocomplete(climate_ingredients=None):
+    """Build ingredient list with source info for autocomplete dropdowns.
+
+    Args:
+        climate_ingredients: Optional pre-loaded list from get_all_climate_ingredients().
+                           If not provided, will load from database.
+
+    Returns:
+        List of dicts with 'name' and 'source' keys, sorted by name.
+        Example: [{'name': 'Beef, mince', 'source': 'ClimateDB'}, ...]
+    """
+    if climate_ingredients is None:
+        climate_ingredients = get_all_climate_ingredients()
+
+    all_ingredients = []
+    seen_names = set()
+
+    for ing in climate_ingredients:
+        source_db = ing.get('source', 'unknown')
+        # Add all language variants with their source
+        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+            if name and name not in seen_names:
+                seen_names.add(name)
+                all_ingredients.append({'name': name, 'source': source_db})
+
+    all_ingredients.sort(key=lambda x: x['name'])
+    return all_ingredients
+
+
 def parse_ingredients(raw_text_block, climate_names=None):
     """
     Parse raw ingredient text and find matching candidates from climate database.

@@ -19,10 +19,10 @@ from db import (
     get_all_recipes,
     get_recipe_by_id,
     get_connection,
-    get_all_climate_ingredients,
     get_ingredient_by_name
 )
 from recipe_manager import calculate_rating
+from ingredient_matcher import get_ingredients_for_autocomplete
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -197,18 +197,7 @@ def review_recipe(recipe_id):
         return redirect(url_for('admin.review_queue'))
 
     units = load_units()
-    all_ingredients_data = get_all_climate_ingredients()
-
-    # Build list with name and source for autocomplete display
-    all_ingredients = []
-    seen_names = set()
-    for ing in all_ingredients_data:
-        source_db = ing.get('source', 'unknown')
-        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
-            if name and name not in seen_names:
-                seen_names.add(name)
-                all_ingredients.append({'name': name, 'source': source_db})
-    all_ingredients.sort(key=lambda x: x['name'])
+    all_ingredients = get_ingredients_for_autocomplete()
 
     return render_template('admin/review_detail.html',
         recipe=recipe,

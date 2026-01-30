@@ -143,61 +143,14 @@
 
 </div>
 
+<script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
 <script>
 const availableUnits = {{ units | tojson }};
 const allIngredients = {{ all_ingredients | tojson }};
 let rowCounter = 1000;
 
-// Custom autocomplete functionality
-function setupAutocomplete() {
-    document.addEventListener('input', function(e) {
-        if (!e.target.matches('.ingredient-input')) return;
-
-        const input = e.target;
-        const dropdown = input.nextElementSibling;
-        const query = input.value.toLowerCase().trim();
-
-        if (query.length < 2) {
-            dropdown.classList.add('hidden');
-            return;
-        }
-
-        // Filter ingredients - show items containing ALL search words
-        const searchWords = query.split(/\s+/).filter(w => w.length > 0);
-        const matches = allIngredients.filter(ing => {
-            const nameLower = ing.name.toLowerCase();
-            return searchWords.every(word => nameLower.includes(word));
-        }).slice(0, 20);
-
-        if (matches.length === 0) {
-            dropdown.classList.add('hidden');
-            return;
-        }
-
-        dropdown.innerHTML = matches.map(ing => `
-            <div class="autocomplete-item px-3 py-2 hover:bg-emerald-50 cursor-pointer text-sm text-slate-700" data-value="${ing.name}">
-                ${ing.name} <span class="text-slate-400">(${ing.source})</span>
-            </div>
-        `).join('');
-        dropdown.classList.remove('hidden');
-    });
-
-    // Handle click on dropdown item
-    document.addEventListener('click', function(e) {
-        const item = e.target.closest('.autocomplete-item');
-        if (item) {
-            const input = item.closest('.relative').querySelector('.ingredient-input');
-            input.value = item.dataset.value;
-            item.closest('.autocomplete-dropdown').classList.add('hidden');
-        }
-        // Hide dropdowns when clicking outside
-        if (!e.target.matches('.ingredient-input') && !e.target.closest('.autocomplete-item')) {
-            document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.classList.add('hidden'));
-        }
-    });
-}
-
-setupAutocomplete();
+// Initialize shared autocomplete (no candidates on focus for edit page)
+setupIngredientAutocomplete(allIngredients);
 
 function addIngredientRow() {
     rowCounter++;

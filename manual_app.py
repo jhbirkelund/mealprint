@@ -6,6 +6,7 @@ from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
 from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name, get_all_climate_ingredients
+from ingredient_matcher import get_ingredients_for_autocomplete
 from admin import admin_bp
 
 app = Flask(__name__)
@@ -23,31 +24,25 @@ except Exception as e:
 
 # Load climate ingredients from Supabase at startup (cached for fuzzy matching)
 # This unified table includes Danish DB (highest confidence) + Agribalyse (high confidence)
-# We build two lookup structures:
-#   CLIMATE_NAMES: list of all searchable names (EN + DK + FR) for fuzzy matching
-#   CLIMATE_NAME_TO_DISPLAY: maps any language name to its display name (for dropdown selection)
 try:
     CLIMATE_INGREDIENTS = get_all_climate_ingredients()
 
-    # Build searchable names list (all languages) and mapping to display name
+    # Build searchable names list (all languages) for fuzzy matching
     CLIMATE_NAMES = []
-    CLIMATE_NAME_TO_DISPLAY = {}  # lowercase name -> display name
-
     for ing in CLIMATE_INGREDIENTS:
-        display_name = ing['name']  # Primary display name (EN or fallback)
-
-        # Add all language variants to searchable names
         for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
             if name and name not in CLIMATE_NAMES:
                 CLIMATE_NAMES.append(name)
-                CLIMATE_NAME_TO_DISPLAY[name.lower()] = display_name
+
+    # Build autocomplete list with source info (using shared helper)
+    ALL_INGREDIENTS_FOR_AUTOCOMPLETE = get_ingredients_for_autocomplete(CLIMATE_INGREDIENTS)
 
     print(f"Loaded {len(CLIMATE_INGREDIENTS)} climate ingredients ({len(CLIMATE_NAMES)} searchable names)")
 except Exception as e:
     print(f"Warning: Could not load climate ingredients: {e}")
     CLIMATE_INGREDIENTS = []
     CLIMATE_NAMES = []
-    CLIMATE_NAME_TO_DISPLAY = {}
+    ALL_INGREDIENTS_FOR_AUTOCOMPLETE = []
 
 
 def get_processed_ingredients(raw_text_block):
@@ -267,18 +262,6 @@ def summary():
         raw_unit = item['unit'].lower().strip() if item['unit'] else ""
         item['unit'] = UNIT_MAP.get(raw_unit, raw_unit)
 
-    # Get all ingredients from cached Supabase data (Danish + Agribalyse)
-    # Build list with name and source for autocomplete display
-    all_ingredients = []
-    seen_names = set()
-    for ing in CLIMATE_INGREDIENTS:
-        source_db = ing.get('source', 'unknown')
-        # Add all language variants with their source
-        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
-            if name and name not in seen_names:
-                seen_names.add(name)
-                all_ingredients.append({'name': name, 'source': source_db})
-    all_ingredients.sort(key=lambda x: x['name'])
     available_units = list(CONVERSIONS['units'].keys())
 
     return render_template('summary.html',
@@ -289,7 +272,7 @@ def summary():
         site_rating=site_rating,
         original_ingredients=original_ingredients,
         ingredients=ingredients_with_matches,
-        all_ingredients=all_ingredients,
+        all_ingredients=ALL_INGREDIENTS_FOR_AUTOCOMPLETE,
         units=available_units
     )
 
@@ -443,17 +426,6 @@ def edit(recipe_id):
     if not r:
         return render_template('home.html', error="Recipe not found")
 
-    # Get all ingredients from cached Supabase data (Danish + Agribalyse)
-    # Build list with name and source for autocomplete display
-    all_ingredients = []
-    seen_names = set()
-    for ing in CLIMATE_INGREDIENTS:
-        source_db = ing.get('source', 'unknown')
-        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
-            if name and name not in seen_names:
-                seen_names.add(name)
-                all_ingredients.append({'name': name, 'source': source_db})
-    all_ingredients.sort(key=lambda x: x['name'])
     available_units = list(CONVERSIONS['units'].keys())
 
     # Check for publish flag (from admin review)
@@ -461,7 +433,7 @@ def edit(recipe_id):
 
     return render_template('edit.html',
         recipe=r,
-        all_ingredients=all_ingredients,
+        all_ingredients=ALL_INGREDIENTS_FOR_AUTOCOMPLETE,
         units=available_units,
         publish=publish
     )
