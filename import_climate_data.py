@@ -77,9 +77,9 @@ def import_danish_db():
                 name_dk,
                 None,  # name_fr
                 co2,
-                'danish',
+                'ClimateDB',
                 source_id,
-                'highest',  # Danish DB is our primary source
+                'highest',  # ClimateDB (Danish) is our primary source
                 category,
                 subcategory,
                 energy_kj,
@@ -151,7 +151,7 @@ def import_agribalyse():
                 None,  # name_dk
                 name_fr,
                 co2,
-                'agribalyse',
+                'Agribalyse',
                 source_id,
                 'high',  # Agribalyse is our secondary source
                 category,

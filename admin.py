@@ -198,7 +198,17 @@ def review_recipe(recipe_id):
 
     units = load_units()
     all_ingredients_data = get_all_climate_ingredients()
-    all_ingredients = [ing['name'] for ing in all_ingredients_data]
+
+    # Build list with name and source for autocomplete display
+    all_ingredients = []
+    seen_names = set()
+    for ing in all_ingredients_data:
+        source_db = ing.get('source', 'unknown')
+        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+            if name and name not in seen_names:
+                seen_names.add(name)
+                all_ingredients.append({'name': name, 'source': source_db})
+    all_ingredients.sort(key=lambda x: x['name'])
 
     return render_template('admin/review_detail.html',
         recipe=recipe,

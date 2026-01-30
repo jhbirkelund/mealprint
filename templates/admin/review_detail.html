@@ -79,10 +79,13 @@
                             {% endfor %}
                         </select>
 
-                        <!-- Ingredient name -->
-                        <input type="text" name="selected_matches" list="all-ingredients" value="{{ ing.item }}" required
-                            class="flex-1 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
-                            placeholder="Search ingredient...">
+                        <!-- Ingredient name with autocomplete -->
+                        <div class="flex-1 relative">
+                            <input type="text" name="selected_matches" value="{{ ing.item }}" required autocomplete="off"
+                                class="ingredient-input w-full px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                                placeholder="Search ingredient...">
+                            <div class="autocomplete-dropdown hidden absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+                        </div>
 
                         <!-- Source badge -->
                         <span class="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-xs whitespace-nowrap">{{ ing.source_db or '-' }}</span>
@@ -210,15 +213,61 @@
 <!-- Hidden form for re-scrape -->
 <form id="rescrape-form" method="POST" action="{{ url_for('admin.rescrape_recipe', recipe_id=recipe.id) }}"></form>
 
-<!-- Datalist for ingredient autocomplete -->
-<datalist id="all-ingredients">
-    {% for name in all_ingredients %}
-    <option value="{{ name }}">
-    {% endfor %}
-</datalist>
 
 <script>
 const availableUnits = {{ units | tojson }};
+const allIngredients = {{ all_ingredients | tojson }};
+
+// Custom autocomplete functionality
+function setupAutocomplete() {
+    document.addEventListener('input', function(e) {
+        if (!e.target.matches('.ingredient-input')) return;
+
+        const input = e.target;
+        const dropdown = input.nextElementSibling;
+        const query = input.value.toLowerCase().trim();
+
+        if (query.length < 2) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        // Filter ingredients - show items containing ALL search words
+        const searchWords = query.split(/\s+/).filter(w => w.length > 0);
+        const matches = allIngredients.filter(ing => {
+            const nameLower = ing.name.toLowerCase();
+            return searchWords.every(word => nameLower.includes(word));
+        }).slice(0, 20);
+
+        if (matches.length === 0) {
+            dropdown.classList.add('hidden');
+            return;
+        }
+
+        dropdown.innerHTML = matches.map(ing => `
+            <div class="autocomplete-item px-3 py-2 hover:bg-emerald-50 cursor-pointer text-sm text-slate-700" data-value="${ing.name}">
+                ${ing.name} <span class="text-slate-400">(${ing.source})</span>
+            </div>
+        `).join('');
+        dropdown.classList.remove('hidden');
+    });
+
+    // Handle click on dropdown item
+    document.addEventListener('click', function(e) {
+        const item = e.target.closest('.autocomplete-item');
+        if (item) {
+            const input = item.closest('.relative').querySelector('.ingredient-input');
+            input.value = item.dataset.value;
+            item.closest('.autocomplete-dropdown').classList.add('hidden');
+        }
+        // Hide dropdowns when clicking outside
+        if (!e.target.matches('.ingredient-input') && !e.target.closest('.autocomplete-item')) {
+            document.querySelectorAll('.autocomplete-dropdown').forEach(d => d.classList.add('hidden'));
+        }
+    });
+}
+
+setupAutocomplete();
 
 function addIngredientRow() {
     const list = document.getElementById('ingredients-list');
@@ -235,9 +284,12 @@ function addIngredientRow() {
             <select name="units" class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm bg-white">
                 ${unitOptions}
             </select>
-            <input type="text" name="selected_matches" list="all-ingredients" required
-                class="flex-1 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
-                placeholder="Search ingredient...">
+            <div class="flex-1 relative">
+                <input type="text" name="selected_matches" required autocomplete="off"
+                    class="ingredient-input w-full px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
+                    placeholder="Search ingredient...">
+                <div class="autocomplete-dropdown hidden absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+            </div>
             <span class="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-xs whitespace-nowrap">-</span>
             <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 p-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

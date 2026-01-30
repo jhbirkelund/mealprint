@@ -268,7 +268,17 @@ def summary():
         item['unit'] = UNIT_MAP.get(raw_unit, raw_unit)
 
     # Get all ingredients from cached Supabase data (Danish + Agribalyse)
-    all_ingredients = sorted(set(CLIMATE_NAMES))
+    # Build list with name and source for autocomplete display
+    all_ingredients = []
+    seen_names = set()
+    for ing in CLIMATE_INGREDIENTS:
+        source_db = ing.get('source', 'unknown')
+        # Add all language variants with their source
+        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+            if name and name not in seen_names:
+                seen_names.add(name)
+                all_ingredients.append({'name': name, 'source': source_db})
+    all_ingredients.sort(key=lambda x: x['name'])
     available_units = list(CONVERSIONS['units'].keys())
 
     return render_template('summary.html',
@@ -434,7 +444,16 @@ def edit(recipe_id):
         return render_template('home.html', error="Recipe not found")
 
     # Get all ingredients from cached Supabase data (Danish + Agribalyse)
-    all_ingredients = sorted(set(CLIMATE_NAMES))
+    # Build list with name and source for autocomplete display
+    all_ingredients = []
+    seen_names = set()
+    for ing in CLIMATE_INGREDIENTS:
+        source_db = ing.get('source', 'unknown')
+        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+            if name and name not in seen_names:
+                seen_names.add(name)
+                all_ingredients.append({'name': name, 'source': source_db})
+    all_ingredients.sort(key=lambda x: x['name'])
     available_units = list(CONVERSIONS['units'].keys())
 
     # Check for publish flag (from admin review)
