@@ -459,26 +459,51 @@ def delete_recipe_from_db(recipe_id):
 # =============================================================================
 
 def get_all_climate_ingredients():
-    """Get all ingredient names for autocomplete dropdown."""
+    """Get all ingredient names for autocomplete dropdown.
+
+    Returns all language variants (EN, DK, FR) for each ingredient to support
+    multi-language searching and autocomplete.
+    """
     conn = get_connection()
     cur = conn.cursor()
 
-    # Get unique names from all sources, preferring Danish names for DK entries
+    # Get all ingredients with all name variants
     cur.execute('''
-        SELECT DISTINCT
-            COALESCE(name_en, name_dk, name_fr) as display_name,
+        SELECT
+            id,
+            name_en,
+            name_dk,
+            name_fr,
+            co2_per_kg,
             source_db,
             confidence
         FROM climate_ingredients
-        WHERE COALESCE(name_en, name_dk, name_fr) IS NOT NULL
-        ORDER BY display_name
+        WHERE name_en IS NOT NULL OR name_dk IS NOT NULL OR name_fr IS NOT NULL
+        ORDER BY COALESCE(name_en, name_dk, name_fr)
     ''')
     results = cur.fetchall()
 
     cur.close()
     conn.close()
 
-    return [{'name': r[0], 'source': r[1], 'confidence': r[2]} for r in results]
+    # Build list with all searchable names pointing to same ingredient data
+    ingredients = []
+    for r in results:
+        ing_id, name_en, name_dk, name_fr, co2, source, confidence = r
+        # Primary display name (what's shown in dropdown)
+        display_name = name_en or name_dk or name_fr
+        ingredients.append({
+            'id': ing_id,
+            'name': display_name,  # For backwards compatibility
+            'name_en': name_en,
+            'name_dk': name_dk,
+            'name_fr': name_fr,
+            'co2_per_kg': co2,
+            'source': source,
+            'confidence': confidence
+        })
+
+    return ingredients
 
 
 def search_climate_ingredients(search_term, limit=20):

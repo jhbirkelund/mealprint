@@ -28,10 +28,20 @@ INFORMAL_UNITS = {
 
 
 def load_climate_names():
-    """Load climate ingredient names from database for fuzzy matching."""
+    """Load climate ingredient names from database for fuzzy matching.
+
+    Returns list of all searchable names (EN + DK + FR) to support
+    multi-language recipe scraping and searching.
+    """
     try:
         ingredients = get_all_climate_ingredients()
-        return [ing['name'] for ing in ingredients]
+        names = []
+        for ing in ingredients:
+            # Add all language variants for searchability
+            for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+                if name and name not in names:
+                    names.append(name)
+        return names
     except Exception as e:
         print(f"Warning: Could not load climate ingredients: {e}")
         return []

@@ -187,6 +187,13 @@
 
                 <hr class="border-slate-200">
 
+                {% if recipe.source %}
+                <button type="button" onclick="confirmRescrape()"
+                    class="w-full bg-white text-blue-600 border border-blue-200 py-2 px-4 rounded-lg hover:bg-blue-50 font-medium">
+                    Re-scrape from Source
+                </button>
+                {% endif %}
+
                 <button type="button" onclick="confirmReject()"
                     class="w-full bg-white text-rose-600 border border-rose-200 py-2 px-4 rounded-lg hover:bg-rose-50 font-medium">
                     Reject & Delete
@@ -199,6 +206,9 @@
 
 <!-- Hidden form for rejection -->
 <form id="reject-form" method="POST" action="{{ url_for('admin.reject_recipe', recipe_id=recipe.id) }}"></form>
+
+<!-- Hidden form for re-scrape -->
+<form id="rescrape-form" method="POST" action="{{ url_for('admin.rescrape_recipe', recipe_id=recipe.id) }}"></form>
 
 <!-- Datalist for ingredient autocomplete -->
 <datalist id="all-ingredients">
@@ -242,6 +252,12 @@ function addIngredientRow() {
 function confirmReject() {
     if (confirm('Delete this recipe? This cannot be undone.')) {
         document.getElementById('reject-form').submit();
+    }
+}
+
+function confirmRescrape() {
+    if (confirm('Re-scrape this recipe from the source URL? This will replace the current ingredients with freshly parsed data.')) {
+        document.getElementById('rescrape-form').submit();
     }
 }
 </script>

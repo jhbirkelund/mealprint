@@ -22,6 +22,7 @@ from db import (
     get_all_climate_ingredients,
     get_ingredient_by_name
 )
+from recipe_manager import calculate_rating
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -271,13 +272,11 @@ def save_recipe(recipe_id):
 
     co2_per_serving = total_co2 / servings if servings > 0 else total_co2
 
-    # Calculate rating
-    if co2_per_serving < 1.0:
-        rating_label, rating_color, rating_emoji = 'Low Impact', 'emerald', '🌱'
-    elif co2_per_serving < 1.8:
-        rating_label, rating_color, rating_emoji = 'Medium Impact', 'amber', '🌿'
-    else:
-        rating_label, rating_color, rating_emoji = 'High Impact', 'rose', '🔥'
+    # Calculate rating using shared function from recipe_manager
+    rating = calculate_rating(co2_per_serving)
+    rating_label = rating['label']
+    rating_color = rating['color']
+    rating_emoji = rating['emoji']
 
     # Nutrition per serving
     nutrition_per_serving = {
@@ -376,3 +375,73 @@ def reject_recipe(recipe_id):
 
     flash('Recipe deleted', 'info')
     return redirect(url_for('admin.review_queue'))
+
+
+@admin_bp.route('/review/<recipe_id>/rescrape', methods=['POST'])
+@admin_required
+def rescrape_recipe(recipe_id):
+    """Re-scrape recipe data from the original source URL."""
+    from recipe_scrapers import scrape_me
+    from ingredient_matcher import parse_ingredients, load_climate_names
+    import re
+
+    recipe = get_recipe_by_id(recipe_id)
+    if not recipe:
+        flash('Recipe not found', 'error')
+        return redirect(url_for('admin.review_queue'))
+
+    source_url = recipe.get('source')
+    if not source_url:
+        flash('Recipe has no source URL to re-scrape', 'error')
+        return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
+
+    try:
+        # Scrape the recipe again
+        scraper = scrape_me(source_url)
+
+        # Extract data
+        new_name = scraper.title() or recipe['name']
+        new_servings = scraper.yields() or str(recipe['servings'])
+        servings_match = re.search(r'\d+', str(new_servings))
+        new_servings = float(servings_match.group()) if servings_match else recipe['servings']
+
+        ingredients_list = scraper.ingredients()
+        new_original_ingredients = "\n".join(ingredients_list)
+
+        # Parse ingredients with climate matching
+        climate_names = load_climate_names()
+        parsed_ingredients = parse_ingredients(new_original_ingredients, climate_names)
+
+        # Update recipe in database
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute('''
+            UPDATE recipes SET
+                name = %s,
+                servings = %s,
+                original_ingredients = %s
+            WHERE id = %s
+        ''', (new_name, new_servings, new_original_ingredients, recipe_id))
+
+        # Delete old ingredients and insert new parsed ones
+        cur.execute('DELETE FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
+
+        for ing in parsed_ingredients:
+            # Use first candidate as the matched item
+            matched_item = ing['candidates'][0] if ing['candidates'] else ''
+            cur.execute('''
+                INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (recipe_id, ing['original_line'], matched_item, ing['amount'], ing['unit'], 0, 0, ''))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        flash(f'Recipe re-scraped successfully. {len(parsed_ingredients)} ingredients found.', 'success')
+
+    except Exception as e:
+        flash(f'Re-scrape failed: {str(e)}', 'error')
+
+    return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))

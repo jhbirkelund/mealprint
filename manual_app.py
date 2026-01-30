@@ -23,14 +23,31 @@ except Exception as e:
 
 # Load climate ingredients from Supabase at startup (cached for fuzzy matching)
 # This unified table includes Danish DB (highest confidence) + Agribalyse (high confidence)
+# We build two lookup structures:
+#   CLIMATE_NAMES: list of all searchable names (EN + DK + FR) for fuzzy matching
+#   CLIMATE_NAME_TO_DISPLAY: maps any language name to its display name (for dropdown selection)
 try:
     CLIMATE_INGREDIENTS = get_all_climate_ingredients()
-    CLIMATE_NAMES = [ing['name'] for ing in CLIMATE_INGREDIENTS]
-    print(f"Loaded {len(CLIMATE_INGREDIENTS)} climate ingredients from database")
+
+    # Build searchable names list (all languages) and mapping to display name
+    CLIMATE_NAMES = []
+    CLIMATE_NAME_TO_DISPLAY = {}  # lowercase name -> display name
+
+    for ing in CLIMATE_INGREDIENTS:
+        display_name = ing['name']  # Primary display name (EN or fallback)
+
+        # Add all language variants to searchable names
+        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+            if name and name not in CLIMATE_NAMES:
+                CLIMATE_NAMES.append(name)
+                CLIMATE_NAME_TO_DISPLAY[name.lower()] = display_name
+
+    print(f"Loaded {len(CLIMATE_INGREDIENTS)} climate ingredients ({len(CLIMATE_NAMES)} searchable names)")
 except Exception as e:
     print(f"Warning: Could not load climate ingredients: {e}")
     CLIMATE_INGREDIENTS = []
     CLIMATE_NAMES = []
+    CLIMATE_NAME_TO_DISPLAY = {}
 
 
 def get_processed_ingredients(raw_text_block):
