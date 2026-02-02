@@ -164,9 +164,13 @@ def parse_ingredients(raw_text_block, climate_names=None):
         candidate_names = contains_matches[:10] + [n for n in fuzzy_names if n not in contains_matches]
         candidate_names = candidate_names[:15]
 
-        # Determine confidence: word match exists OR fuzzy score > 70
+        # Determine confidence: require BOTH strong word match AND very high fuzzy score
+        # Threshold set high (92) to trigger Mistral AI fallback for questionable matches
         best_fuzzy_score = fuzzy_matches[0][1] if fuzzy_matches else 0
-        is_confident = len(contains_matches) > 0 or best_fuzzy_score >= 70
+        best_word_score = word_match_score(contains_matches[0]) if contains_matches else 0
+
+        # Confident only if: strong word match (score >= 4) AND high fuzzy (>= 92%)
+        is_confident = best_word_score >= 4 and best_fuzzy_score >= 92
 
         processed_list.append({
             "original_line": line,

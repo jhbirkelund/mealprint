@@ -65,8 +65,9 @@
                     {% endif %}
 
                     <div class="flex items-center gap-2">
-                        <!-- Hidden original_line -->
+                        <!-- Hidden fields -->
                         <input type="hidden" name="original_lines" value="{{ ing.original_line or '' }}">
+                        <input type="hidden" name="matched_by" value="{{ ing.matched_by or 'fuzzy' }}">
 
                         <!-- Amount -->
                         <input type="number" name="amounts" value="{{ ing.amount }}" step="any" required
@@ -89,6 +90,9 @@
 
                         <!-- Source badge -->
                         <span class="px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-xs whitespace-nowrap">{{ ing.source_db or '-' }}</span>
+                        {% if ing.matched_by == 'mistral' %}
+                        <span class="px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded text-xs whitespace-nowrap font-medium" title="Matched by Mistral AI">AI</span>
+                        {% endif %}
 
                         <!-- Remove button -->
                         <button type="button" onclick="this.closest('.ingredient-row').remove()" class="text-slate-400 hover:text-rose-500 p-1">
@@ -190,6 +194,11 @@
 
                 <hr class="border-slate-200">
 
+                <button type="button" onclick="confirmAiRematch()"
+                    class="w-full bg-violet-600 text-white py-2 px-4 rounded-lg hover:bg-violet-700 font-medium">
+                    Re-match with AI
+                </button>
+
                 {% if recipe.source %}
                 <button type="button" onclick="confirmRescrape()"
                     class="w-full bg-white text-blue-600 border border-blue-200 py-2 px-4 rounded-lg hover:bg-blue-50 font-medium">
@@ -213,6 +222,9 @@
 <!-- Hidden form for re-scrape -->
 <form id="rescrape-form" method="POST" action="{{ url_for('admin.rescrape_recipe', recipe_id=recipe.id) }}"></form>
 
+<!-- Hidden form for AI re-match -->
+<form id="ai-rematch-form" method="POST" action="{{ url_for('admin.ai_rematch_recipe', recipe_id=recipe.id) }}"></form>
+
 
 <script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>
 <script>
@@ -232,6 +244,7 @@ function addIngredientRow() {
         <div class="text-xs text-slate-500 mb-2 font-mono">(manually added)</div>
         <div class="flex items-center gap-2">
             <input type="hidden" name="original_lines" value="(manually added)">
+            <input type="hidden" name="matched_by" value="fuzzy">
             <input type="number" name="amounts" value="100" step="any" required
                 class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm">
             <select name="units" class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm bg-white">
@@ -263,6 +276,12 @@ function confirmReject() {
 function confirmRescrape() {
     if (confirm('Re-scrape this recipe from the source URL? This will replace the current ingredients with freshly parsed data.')) {
         document.getElementById('rescrape-form').submit();
+    }
+}
+
+function confirmAiRematch() {
+    if (confirm('Re-match ALL ingredients using Mistral AI? This may take a few seconds and will update ingredient matches.')) {
+        document.getElementById('ai-rematch-form').submit();
     }
 }
 </script>

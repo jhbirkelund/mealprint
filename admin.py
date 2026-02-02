@@ -23,6 +23,7 @@ from db import (
 )
 from recipe_manager import calculate_rating
 from ingredient_matcher import get_ingredients_for_autocomplete
+from mistral_matcher import mistral_match, is_mistral_available
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -225,6 +226,7 @@ def save_recipe(recipe_id):
     units = request.form.getlist('units')
     selected_matches = request.form.getlist('selected_matches')
     original_lines = request.form.getlist('original_lines')
+    matched_by_list = request.form.getlist('matched_by')
 
     # Calculate CO2 for each ingredient
     ingredients = []
@@ -236,6 +238,7 @@ def save_recipe(recipe_id):
         unit = units[i]
         item_name = selected_matches[i]
         original_line = original_lines[i] if i < len(original_lines) else ''
+        matched_by = matched_by_list[i] if i < len(matched_by_list) else 'fuzzy'
 
         # Convert to grams
         grams = get_weight_in_grams(amount, unit, item_name)
@@ -266,7 +269,8 @@ def save_recipe(recipe_id):
             'unit': unit,
             'grams': grams,
             'co2': co2,
-            'source_db': source_db
+            'source_db': source_db,
+            'matched_by': matched_by
         })
 
     co2_per_serving = total_co2 / servings if servings > 0 else total_co2
@@ -321,9 +325,9 @@ def save_recipe(recipe_id):
     # Insert new ingredients
     for ing in ingredients:
         cur.execute('''
-            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-        ''', (recipe_id, ing['original_line'], ing['item'], ing['amount'], ing['unit'], ing['grams'], ing['co2'], ing['source_db']))
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (recipe_id, ing['original_line'], ing['item'], ing['amount'], ing['unit'], ing['grams'], ing['co2'], ing['source_db'], ing.get('matched_by', 'fuzzy')))
 
     # Delete old tags and insert new ones
     cur.execute('DELETE FROM recipe_tags WHERE recipe_id = %s', (recipe_id,))
@@ -426,21 +430,97 @@ def rescrape_recipe(recipe_id):
         # Delete old ingredients and insert new parsed ones
         cur.execute('DELETE FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
 
+        mistral_count = 0
+        low_confidence_count = 0
         for ing in parsed_ingredients:
             # Use first candidate as the matched item
             matched_item = ing['candidates'][0] if ing['candidates'] else ''
+            matched_by = 'fuzzy'
+
+            # For low-confidence matches, try Mistral AI fallback
+            if not ing['confident'] and ing['candidates'] and is_mistral_available():
+                low_confidence_count += 1
+                # Send top 20 candidates to Mistral
+                mistral_result = mistral_match(ing['original_line'], ing['candidates'][:20])
+                if mistral_result and mistral_result.get('match'):
+                    matched_item = mistral_result['match']
+                    matched_by = 'mistral'
+                    mistral_count += 1
+
             cur.execute('''
-                INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (recipe_id, ing['original_line'], matched_item, ing['amount'], ing['unit'], 0, 0, ''))
+                INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (recipe_id, ing['original_line'], matched_item, ing['amount'], ing['unit'], 0, 0, '', matched_by))
 
         conn.commit()
         cur.close()
         conn.close()
 
-        flash(f'Recipe re-scraped successfully. {len(parsed_ingredients)} ingredients found.', 'success')
+        ai_msg = f' ({mistral_count} matched by AI)' if mistral_count > 0 else ''
+        flash(f'Recipe re-scraped successfully. {len(parsed_ingredients)} ingredients found{ai_msg}.', 'success')
 
     except Exception as e:
         flash(f'Re-scrape failed: {str(e)}', 'error')
+
+    return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
+
+
+@admin_bp.route('/review/<recipe_id>/ai-rematch', methods=['POST'])
+@admin_required
+def ai_rematch_recipe(recipe_id):
+    """Re-match all ingredients using Mistral AI."""
+    from ingredient_matcher import parse_ingredients, load_climate_names
+
+    if not is_mistral_available():
+        flash('Mistral API key not configured. Set MISTRAL_API_KEY environment variable.', 'error')
+        return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
+
+    recipe = get_recipe_by_id(recipe_id)
+    if not recipe:
+        flash('Recipe not found', 'error')
+        return redirect(url_for('admin.review_queue'))
+
+    try:
+        # Load climate names for candidate generation
+        climate_names = load_climate_names()
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        mistral_count = 0
+        for ing in recipe['ingredients']:
+            original_line = ing.get('original_line', '')
+            if not original_line or original_line == '(manually added)':
+                continue
+
+            # Get candidates using fuzzy matching
+            parsed = parse_ingredients(original_line, climate_names)
+            if not parsed or not parsed[0]['candidates']:
+                continue
+
+            candidates = parsed[0]['candidates'][:20]
+
+            # Call Mistral for this ingredient
+            mistral_result = mistral_match(original_line, candidates)
+            if mistral_result and mistral_result.get('match'):
+                # Update the ingredient in the database
+                cur.execute('''
+                    UPDATE recipe_ingredients
+                    SET item = %s, matched_by = 'mistral'
+                    WHERE recipe_id = %s AND original_line = %s
+                ''', (mistral_result['match'], recipe_id, original_line))
+                mistral_count += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        if mistral_count > 0:
+            flash(f'AI re-matched {mistral_count} ingredients.', 'success')
+        else:
+            flash('No ingredients were updated by AI.', 'info')
+
+    except Exception as e:
+        flash(f'AI re-match failed: {str(e)}', 'error')
 
     return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))

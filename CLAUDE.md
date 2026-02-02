@@ -15,6 +15,8 @@ Mealprint is a Python application for calculating the carbon footprint (CO2 emis
 
 **Environment Variables** (configured in Render):
 - `DATABASE_URL` - Supabase PostgreSQL connection string (Session Pooler)
+- `MISTRAL_API_KEY` - Mistral AI API key for ingredient matching fallback (optional, admin-only)
+- `ADMIN_PASSWORD` - Password for admin area (defaults to 'admin' for local dev)
 
 ## Running Locally
 
@@ -77,6 +79,14 @@ python auto_builder.py
   - `auto_match_ingredients(raw_text)` - Parse and auto-select best matches (for bulk scraper)
   - `load_climate_names()` - Load ingredient names from Supabase (all languages: EN/DK/FR)
   - `get_ingredients_for_autocomplete()` - Build ingredient list with source info for dropdowns
+  - Confidence threshold: word_score ≥ 4 AND fuzzy ≥ 92% (triggers AI fallback otherwise)
+
+- **mistral_matcher.py** - Mistral AI fallback for ingredient matching (admin-only):
+  - `mistral_match(raw_text, candidates)` - Send ingredient + top 20 candidates to Mistral AI
+  - `is_mistral_available()` - Check if MISTRAL_API_KEY is configured
+  - Uses `mistral-small-latest` model for cost-effective matching (~$0.0002/ingredient)
+  - Returns structured JSON: `{"match": "name", "confidence": 0.95, "reasoning": "..."}`
+  - Only triggered when fuzzy matching confidence is low
 
 - **bulk_scraper.py** - Batch recipe import tool:
   - `run_import_job(urls)` - Process URL list, save as unpublished recipes
@@ -200,7 +210,8 @@ CREATE TABLE recipe_ingredients (
     unit TEXT,
     grams REAL,
     co2 REAL,
-    source_db TEXT           -- Which DB matched (ClimateDB/Agribalyse/Hestia)
+    source_db TEXT,          -- Which DB matched (ClimateDB/Agribalyse/Hestia)
+    matched_by TEXT DEFAULT 'fuzzy'  -- 'fuzzy' or 'mistral' (AI-matched)
 );
 
 -- recipe_tags table
@@ -343,7 +354,8 @@ Implemented routes:
 - `/admin/review/<id>/save` - Save changes with CO2 recalculation, publish or save as draft
 - `/admin/review/<id>/approve` - Quick publish without editing
 - `/admin/review/<id>/reject` - Delete recipe
-- `/admin/review/<id>/rescrape` - Re-fetch recipe data from source URL
+- `/admin/review/<id>/rescrape` - Re-fetch recipe data from source URL (auto-triggers AI for low-confidence)
+- `/admin/review/<id>/ai-rematch` - Re-match ALL ingredients using Mistral AI
 
 **Duplicate URL Handling:**
 - Deduplicates URLs within submitted batch
@@ -363,7 +375,6 @@ Implemented routes:
   - Meal type: Pull from recipe metadata (breakfast, lunch, dinner, dessert, snack, etc.)
   - Nutrition: Based on calculated values (high protein, low carb, low calorie, etc.)
 - **HESTIA database integration** - Global fallback for exotic ingredients
-- **LLM fallback** - For < 40% confidence matches, call Claude API
 - **Learn from corrections** - Log when users change matches, suggest new aliases
 - **Percentile-based ratings** - "Low for a dessert" context-aware ratings
 - **Danish language UI** - Full i18n with language switcher
@@ -372,6 +383,13 @@ Implemented routes:
 ---
 
 ### Recently Completed
+- **Mistral AI ingredient matching** - Admin-only AI fallback for low-confidence fuzzy matches:
+  - New module `mistral_matcher.py` with `mistral_match()` function
+  - Auto-triggers during re-scrape when fuzzy confidence < 92%
+  - "Re-match with AI" button for full AI re-matching of all ingredients
+  - Purple "AI" badge in review UI shows which ingredients were AI-matched
+  - `matched_by` column tracks matching method ('fuzzy' or 'mistral')
+  - Uses `mistral-small-latest` model (EU-sovereign, cost-effective)
 - **Recipe thumbnails on Explore page** - Cards now show og-image thumbnail on the right (96x96px), with CO2 below title
 - **Sour Gummy logo font** - "Mealprint" title uses Sour Gummy font (Medium 500, #4A7C59) in both main site and admin
 - **Shared autocomplete module** - Consolidated autocomplete JS into `static/js/autocomplete.js`, used by all ingredient editing UIs (summary, edit, admin review). Reduces code duplication.

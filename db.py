@@ -105,6 +105,10 @@ def init_db():
                           WHERE table_name='recipe_ingredients' AND column_name='source_db') THEN
                 ALTER TABLE recipe_ingredients ADD COLUMN source_db TEXT;
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipe_ingredients' AND column_name='matched_by') THEN
+                ALTER TABLE recipe_ingredients ADD COLUMN matched_by TEXT DEFAULT 'fuzzy';
+            END IF;
         END $$;
     ''')
 
@@ -224,8 +228,8 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
     # Insert ingredients
     for ing in ingredients:
         cur.execute('''
-            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             recipe_id,
             ing.get('original_line', ''),
@@ -234,7 +238,8 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
             ing.get('unit', 'g'),
             ing.get('grams', 0),
             ing.get('co2', 0),
-            ing.get('source_db', '')
+            ing.get('source_db', ''),
+            ing.get('matched_by', 'fuzzy')
         ))
 
     # Insert tags
@@ -262,8 +267,8 @@ def get_all_recipes():
     # Convert to list of dicts with nested structures (matching JSON format)
     result = []
     for r in recipes:
-        # Get ingredients for this recipe (including original_line and source_db for paper trail)
-        cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db FROM recipe_ingredients WHERE recipe_id = %s', (r['id'],))
+        # Get ingredients for this recipe (including original_line, source_db, and matched_by for paper trail)
+        cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by FROM recipe_ingredients WHERE recipe_id = %s', (r['id'],))
         ingredients = [dict(ing) for ing in cur.fetchall()]
 
         # Get tags for this recipe
@@ -320,8 +325,8 @@ def get_recipe_by_id(recipe_id):
         conn.close()
         return None
 
-    # Get ingredients (including original_line and source_db for paper trail)
-    cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
+    # Get ingredients (including original_line, source_db, and matched_by for paper trail)
+    cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
     ingredients = [dict(ing) for ing in cur.fetchall()]
 
     # Get tags
@@ -416,8 +421,8 @@ def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings
     # Insert new ingredients
     for ing in ingredients:
         cur.execute('''
-            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             recipe_id,
             ing.get('original_line', ''),
@@ -426,7 +431,8 @@ def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings
             ing.get('unit', 'g'),
             ing.get('grams', 0),
             ing.get('co2', 0),
-            ing.get('source_db', '')
+            ing.get('source_db', ''),
+            ing.get('matched_by', 'fuzzy')
         ))
 
     # Insert new tags
