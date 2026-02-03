@@ -12,6 +12,7 @@
         "oz": 28.35,
         "drop": 0.05,
         "pinch": 0.3,
+        "dash": 0.6,
         "piece": 100,
         "handful": 30,
         "sprinkling": 2,
@@ -26,7 +27,17 @@
         "bell pepper": 150,
         "pepper": 150,
         "bouillon cube": 10,
-        "bouillon": 10
+        "bouillon": 10,
+        "bay leaf": 0.5,
+        "bay leaves": 0.5,
+        "celery": 40,
+        "celery stick": 40,
+        "celery stalk": 40,
+        "carrot": 70,
+        "lemon": 85,
+        "lemon juice": 30,
+        "lime": 65,
+        "lime juice": 25
     },
     "unit_map": {
         "cubic centimetre": "ml",
@@ -81,6 +92,8 @@
         "sprinkle": "sprinkling",
         "quart": "quart",
         "quarts": "quart",
-        "qt": "quart"
+        "qt": "quart",
+        "dash": "dash",
+        "dashes": "dash"
     }
 }

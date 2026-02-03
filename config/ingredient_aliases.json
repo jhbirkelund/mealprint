@@ -36,10 +36,11 @@
         "flour": "Wheat, flour",
         "ap flour": "Wheat, flour",
         "whole milk": "Milk, whole, 3.5 % fat",
+        "full fat milk": "Milk, whole, 3.5 % fat",
         "skim milk": "Milk, skimmed, 0.5 % fat",
         "skimmed milk": "Milk, skimmed, 0.5 % fat",
         "semi-skimmed milk": "Milk, partly skimmed, 1.5 % fat",
-        "milk": "Milk, whole, 3.5 % fat",
+        "milk": "Milk, partly skimmed, 1.5 % fat",
         "vegetable oil": "oil",
         "canola oil": "oil rapeseed",
         "cooking oil": "oil",
@@ -130,6 +131,18 @@
         "sea salt": "Salt, table",
         "kosher salt": "Salt, table",
         "table salt": "Salt, table",
+        "salt and pepper": "Salt, table",
+
+        "water": "Water, tap",
+        "cold water": "Water, tap",
+        "warm water": "Water, tap",
+        "hot water": "Water, tap",
+        "lukewarm water": "Water, tap",
+
+        "breadcrumbs": "Bread-crumbs",
+        "bread crumbs": "Bread-crumbs",
+        "panko": "Bread-crumbs",
+        "panko breadcrumbs": "Bread-crumbs",
 
         "beef stock": "Bouillon, beef, prepared",
         "beef broth": "Bouillon, beef, prepared",
@@ -137,6 +150,11 @@
         "chicken stock": "Bouillon, chicken, prepared",
         "chicken broth": "Bouillon, chicken, prepared",
         "chicken bouillon": "Bouillon, chicken, prepared",
+        "vegetable stock": "Bouillon, vegetable",
+        "vegetable broth": "Bouillon, vegetable",
+        "vegetable bouillon": "Bouillon, vegetable",
+        "veggie broth": "Bouillon, vegetable",
+        "veggie stock": "Bouillon, vegetable",
 
         "tomato puree": "Tomato paste, concentrated",
         "tomato purée": "Tomato paste, concentrated",
@@ -174,6 +192,20 @@
         "delicata squash": "Squash, raw",
         "spaghetti squash": "Squash, spaghetti, pulp, raw",
         "pumpkin": "Pumpkin, raw",
-        "squash": "Squash, raw"
+        "squash": "Squash, raw",
+
+        "carrot": "Carrot, raw",
+        "carrots": "Carrot, raw",
+        "celery": "Celery, raw",
+        "celery stick": "Celery, raw",
+        "celery sticks": "Celery, raw",
+        "celery stalk": "Celery, raw",
+        "celery stalks": "Celery, raw",
+        "lemon": "Lemon, raw",
+        "lemons": "Lemon, raw",
+        "lemon juice": "Lemon juice",
+        "lime": "Lime, raw",
+        "limes": "Lime, raw",
+        "lime juice": "Lime juice"
     }
 }

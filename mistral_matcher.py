@@ -106,6 +106,131 @@ Respond with ONLY valid JSON in this exact format:
         return None
 
 
+def mistral_match_batch(ingredients_with_candidates):
+    """
+    Use Mistral AI to match multiple ingredients in a single API call.
+
+    This is much faster than calling mistral_match() repeatedly, as it avoids
+    multiple round-trips to the API.
+
+    Args:
+        ingredients_with_candidates: List of dicts, each with:
+            - 'original_line': The raw ingredient text
+            - 'candidates': List of candidate names from fuzzy matching
+
+    Returns:
+        Dict mapping original_line -> match result (or None if no match)
+        Each result has: match, confidence, reasoning
+
+    Example:
+        Input: [
+            {'original_line': '2 cups diced tomatoes', 'candidates': ['Tomato, raw', 'Tomato, canned']},
+            {'original_line': '1 lb ground beef', 'candidates': ['Beef, mince', 'Beef, steak']}
+        ]
+        Output: {
+            '2 cups diced tomatoes': {'match': 'Tomato, raw', 'confidence': 0.92, 'reasoning': '...'},
+            '1 lb ground beef': {'match': 'Beef, mince', 'confidence': 0.95, 'reasoning': '...'}
+        }
+    """
+    if not MISTRAL_API_KEY:
+        return {}
+
+    if not ingredients_with_candidates:
+        return {}
+
+    try:
+        from mistralai import Mistral
+
+        client = Mistral(api_key=MISTRAL_API_KEY)
+
+        # Build the prompt with all ingredients
+        ingredients_section = ""
+        for i, ing in enumerate(ingredients_with_candidates, 1):
+            candidates_list = ", ".join(ing['candidates'][:15])  # Limit to 15 candidates each
+            ingredients_section += f"\n{i}. \"{ing['original_line']}\"\n   Options: [{candidates_list}]\n"
+
+        prompt = f"""You are a food ingredient matching assistant. Match each recipe ingredient to the best option from its candidate list.
+
+INGREDIENTS TO MATCH:
+{ingredients_section}
+
+Instructions:
+1. For each ingredient, select the BEST matching option from its OPTIONS list
+2. If none of the options are a good match, use "none" as the match
+3. Confidence should be 0.0-1.0 (1.0 = perfect match)
+
+Respond with ONLY a valid JSON array, one object per ingredient in order:
+[
+  {{"ingredient": "original text", "match": "exact name from options or none", "confidence": 0.85, "reasoning": "brief explanation"}},
+  ...
+]"""
+
+        response = client.chat.complete(
+            model="mistral-small-latest",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            timeout_ms=60000,  # 60 second timeout
+        )
+
+        # Parse the response
+        response_text = response.choices[0].message.content.strip()
+
+        # Handle potential markdown code blocks
+        if response_text.startswith("```"):
+            response_text = response_text.split("```")[1]
+            if response_text.startswith("json"):
+                response_text = response_text[4:]
+            response_text = response_text.strip()
+
+        results = json.loads(response_text)
+
+        # Build the result dictionary
+        output = {}
+        for i, result in enumerate(results):
+            if i >= len(ingredients_with_candidates):
+                break
+
+            original_line = ingredients_with_candidates[i]['original_line']
+            candidates = ingredients_with_candidates[i]['candidates']
+
+            match_name = result.get("match")
+            if match_name == "none" or not match_name:
+                output[original_line] = None
+                continue
+
+            # Validate match is in candidates
+            if match_name not in candidates:
+                # Try case-insensitive match
+                match_lower = match_name.lower()
+                found = False
+                for c in candidates:
+                    if c.lower() == match_lower:
+                        match_name = c
+                        found = True
+                        break
+                if not found:
+                    output[original_line] = None
+                    continue
+
+            output[original_line] = {
+                "match": match_name,
+                "confidence": float(result.get("confidence", 0.5)),
+                "reasoning": result.get("reasoning", "")
+            }
+
+        return output
+
+    except ImportError:
+        print("Warning: mistralai package not installed. Run: pip install mistralai")
+        return {}
+    except json.JSONDecodeError as e:
+        print(f"Mistral returned invalid JSON: {e}")
+        return {}
+    except Exception as e:
+        print(f"Mistral API error: {e}")
+        return {}
+
+
 def is_mistral_available():
     """Check if Mistral matching is available (API key set)."""
     return MISTRAL_API_KEY is not None

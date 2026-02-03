@@ -23,7 +23,7 @@ from db import (
 )
 from recipe_manager import calculate_rating
 from ingredient_matcher import get_ingredients_for_autocomplete
-from mistral_matcher import mistral_match, is_mistral_available
+from mistral_matcher import mistral_match, mistral_match_batch, is_mistral_available
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
@@ -430,22 +430,32 @@ def rescrape_recipe(recipe_id):
         # Delete old ingredients and insert new parsed ones
         cur.execute('DELETE FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
 
+        # Collect low-confidence ingredients for batch AI matching
+        low_confidence_ingredients = []
+        if is_mistral_available():
+            for ing in parsed_ingredients:
+                if not ing['confident'] and ing['candidates']:
+                    low_confidence_ingredients.append({
+                        'original_line': ing['original_line'],
+                        'candidates': ing['candidates'][:20]
+                    })
+
+        # Batch AI matching (single API call instead of one per ingredient)
+        ai_matches = {}
+        if low_confidence_ingredients:
+            ai_matches = mistral_match_batch(low_confidence_ingredients)
+
         mistral_count = 0
-        low_confidence_count = 0
         for ing in parsed_ingredients:
             # Use first candidate as the matched item
             matched_item = ing['candidates'][0] if ing['candidates'] else ''
             matched_by = 'fuzzy'
 
-            # For low-confidence matches, try Mistral AI fallback
-            if not ing['confident'] and ing['candidates'] and is_mistral_available():
-                low_confidence_count += 1
-                # Send top 20 candidates to Mistral
-                mistral_result = mistral_match(ing['original_line'], ing['candidates'][:20])
-                if mistral_result and mistral_result.get('match'):
-                    matched_item = mistral_result['match']
-                    matched_by = 'mistral'
-                    mistral_count += 1
+            # Check if AI found a better match
+            if ing['original_line'] in ai_matches and ai_matches[ing['original_line']]:
+                matched_item = ai_matches[ing['original_line']]['match']
+                matched_by = 'mistral'
+                mistral_count += 1
 
             cur.execute('''
                 INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
@@ -484,10 +494,8 @@ def ai_rematch_recipe(recipe_id):
         # Load climate names for candidate generation
         climate_names = load_climate_names()
 
-        conn = get_connection()
-        cur = conn.cursor()
-
-        mistral_count = 0
+        # Collect all ingredients with their candidates for batch processing
+        ingredients_to_match = []
         for ing in recipe['ingredients']:
             original_line = ing.get('original_line', '')
             if not original_line or original_line == '(manually added)':
@@ -498,17 +506,30 @@ def ai_rematch_recipe(recipe_id):
             if not parsed or not parsed[0]['candidates']:
                 continue
 
-            candidates = parsed[0]['candidates'][:20]
+            ingredients_to_match.append({
+                'original_line': original_line,
+                'candidates': parsed[0]['candidates'][:20]
+            })
 
-            # Call Mistral for this ingredient
-            mistral_result = mistral_match(original_line, candidates)
-            if mistral_result and mistral_result.get('match'):
-                # Update the ingredient in the database
+        if not ingredients_to_match:
+            flash('No ingredients to re-match.', 'info')
+            return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
+
+        # Single batch API call for all ingredients
+        ai_matches = mistral_match_batch(ingredients_to_match)
+
+        # Update database with matches
+        conn = get_connection()
+        cur = conn.cursor()
+
+        mistral_count = 0
+        for original_line, result in ai_matches.items():
+            if result and result.get('match'):
                 cur.execute('''
                     UPDATE recipe_ingredients
                     SET item = %s, matched_by = 'mistral'
                     WHERE recipe_id = %s AND original_line = %s
-                ''', (mistral_result['match'], recipe_id, original_line))
+                ''', (result['match'], recipe_id, original_line))
                 mistral_count += 1
 
         conn.commit()

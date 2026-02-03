@@ -383,6 +383,19 @@ Implemented routes:
 ---
 
 ### Recently Completed
+- **Batch AI matching** - Fixed worker timeout errors by processing all ingredients in a single API call:
+  - New `mistral_match_batch()` function handles multiple ingredients at once
+  - Rescrape and AI-rematch now use batch mode (1 API call vs N calls)
+  - 60-second timeout prevents hanging requests
+- **Expanded ingredient aliases** - New mappings for common recipe terms:
+  - Vegetable broth/stock → Bouillon, vegetable
+  - Water → Water, tap (ClimateDB)
+  - Breadcrumbs/panko → Bread-crumbs
+  - Milk now defaults to semi-skimmed (ClimateDB) instead of UHT
+  - Added carrot, celery, lemon, lime mappings
+- **New unit conversions** - Better handling of piece-based ingredients:
+  - New unit: dash (0.6ml)
+  - Ingredient weights: bay leaf (0.5g), celery stick (40g), carrot (70g), lemon (85g), lemon juice (30ml), lime (65g), lime juice (25ml)
 - **Mistral AI ingredient matching** - Admin-only AI fallback for low-confidence fuzzy matches:
   - New module `mistral_matcher.py` with `mistral_match()` function
   - Auto-triggers during re-scrape when fuzzy confidence < 92%
