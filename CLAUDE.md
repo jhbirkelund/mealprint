@@ -369,6 +369,160 @@ Implemented routes:
 - Pagination (fix N+1 query problem)
 - "Inspiration cards" with image, title, CO2 badge, source link
 
+### Phase 5: Transparency Reports (NOT STARTED)
+
+**Goal:** Auditable, compliance-ready documentation for each recipe's CO2 calculation
+
+A downloadable/viewable report per recipe that documents:
+- **Ingredient-level breakdown**: Each ingredient showing original text → matched DB entry → CO2 value
+- **Data sources**: Which database (ClimateDB/Agribalyse/Hestia), version, and confidence level
+- **Matching method**: Fuzzy vs AI-matched, with confidence scores
+- **Calculation methodology**: Unit conversions applied, grams calculated, CO2 formula
+- **Timestamps**: When calculated, when data sources were last updated
+- **Caveats/limitations**: Missing nutrition data, low-confidence matches flagged
+
+**Output formats:**
+- `/recipe/<id>/report` - Web view with expandable sections
+- `/recipe/<id>/report.pdf` - Downloadable PDF for compliance documentation
+- `/recipe/<id>/report.json` - Machine-readable for API consumers
+
+**Use cases:**
+- Food businesses needing carbon labeling documentation
+- Regulatory compliance (EU Green Claims Directive)
+- Academic/research citations
+- Pro user trust and credibility
+
+**Priority:** After Discovery Portal - this is a pro/B2B feature that adds value once there's a public-facing product
+
+### Next Up: Volume-to-Weight Density Conversion
+
+**Problem:** All volume→weight conversions assume water density (1ml = 1g). This causes significant errors:
+- 1 cup flour: Currently 240g, should be ~125g (92% error)
+- 1 cup honey: Currently 240g, should be ~340g (42% error)
+- 1 cup oil: Currently 240g, should be ~220g (9% error)
+
+**Solution: Keyword-based density lookup with safeguards**
+
+New config file `config/densities.json`:
+```json
+{
+  "_comment": "Density in g/ml. Applied when volume units (cup, tbsp, ml, etc.) are used.",
+  "categories": {
+    "flour": {
+      "density": 0.53,
+      "keywords": ["flour"],
+      "exclude": ["cauliflower", "sunflower"]
+    },
+    "sugar_granulated": {
+      "density": 0.85,
+      "keywords": ["sugar"],
+      "exclude": ["sugar snap"]
+    },
+    "sugar_powdered": {
+      "density": 0.56,
+      "keywords": ["icing sugar", "powdered sugar", "confectioner"]
+    },
+    "oil": {
+      "density": 0.92,
+      "keywords": ["oil"],
+      "exclude": ["oily", "oil-"]
+    },
+    "butter": {
+      "density": 0.91,
+      "keywords": ["butter"],
+      "exclude": ["buttermilk", "butternut", "butterfly"]
+    },
+    "honey": {
+      "density": 1.42,
+      "keywords": ["honey"]
+    },
+    "milk": {
+      "density": 1.03,
+      "keywords": ["milk"],
+      "exclude": ["coconut milk", "oat milk", "almond milk"]
+    },
+    "cream": {
+      "density": 1.01,
+      "keywords": ["cream"],
+      "exclude": ["ice cream", "cream cheese"]
+    },
+    "oats": {
+      "density": 0.38,
+      "keywords": ["oats", "oatmeal", "rolled oat"]
+    },
+    "rice_uncooked": {
+      "density": 0.85,
+      "keywords": ["rice"],
+      "exclude": ["rice flour", "rice noodle", "rice paper"]
+    },
+    "nuts_chopped": {
+      "density": 0.53,
+      "keywords": ["almond", "walnut", "pecan", "hazelnut", "cashew", "peanut", "pistachio"]
+    },
+    "cocoa": {
+      "density": 0.35,
+      "keywords": ["cocoa powder", "cacao powder"]
+    },
+    "syrup": {
+      "density": 1.38,
+      "keywords": ["syrup", "maple", "agave", "molasses", "treacle"]
+    },
+    "yogurt": {
+      "density": 1.03,
+      "keywords": ["yogurt", "yoghurt"]
+    },
+    "water": {
+      "density": 1.0,
+      "keywords": ["water", "broth", "stock", "bouillon", "juice"]
+    }
+  },
+  "default_density": 1.0
+}
+```
+
+**Matching logic** (in `recipe_manager.py` or new `density_lookup.py`):
+```python
+def get_density(ingredient_name):
+    """Get density for ingredient. Returns g/ml ratio."""
+    name_lower = ingredient_name.lower()
+
+    for category, config in DENSITIES['categories'].items():
+        # Check exclusions first
+        if any(excl in name_lower for excl in config.get('exclude', [])):
+            continue
+        # Check keywords
+        if any(kw in name_lower for kw in config['keywords']):
+            return config['density']
+
+    return DENSITIES['default_density']
+```
+
+**Integration points:**
+1. `recipe_manager.py: get_weight_in_grams()` - Apply density when unit is volume-based
+2. `ingredient_matcher.py: calculate_ingredient()` - Same
+3. Volume units to handle: ml, l, dl, cup, tbsp, tsp, quart, drop, dash
+
+**Migration script** (`recalculate_recipes.py`):
+- Fetch all recipes from database
+- For each recipe, recalculate grams and CO2 for all ingredients
+- Update `recipe_ingredients` table with new grams/co2 values
+- Update `recipes` table with new total_co2, co2_per_serving
+- Log changes: "Recipe X: CO2 changed from Y to Z"
+- Dry-run mode to preview changes before applying
+
+**Testing:**
+- Unit tests for density lookup edge cases (cauliflower, butternut, etc.)
+- Verify flour/sugar/oil recipes show corrected CO2 values
+- Spot check: recipe with "2 cups flour" should show ~125g not 240g
+
+**Rollout:**
+1. Add `config/densities.json`
+2. Add `get_density()` function
+3. Update `get_weight_in_grams()` to use density
+4. Test with new recipes
+5. Run migration script on existing recipes
+6. Verify via admin UI
+
 ### Future Enhancements
 - **Google Sheets import** - One-click import from a configured Google Sheet (publish as CSV, store URL in env var, button in admin pulls URLs)
 - **Automatic tagging** - Auto-generate tags during scraping:
