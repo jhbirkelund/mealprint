@@ -8,7 +8,7 @@ Used by both the web app (manual_app.py) and bulk scraper (bulk_scraper.py).
 import re
 from quantulum3 import parser as quant_parser
 from rapidfuzz import process, fuzz
-from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams
+from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, get_density, VOLUME_UNITS
 from db import get_ingredient_by_name, get_all_climate_ingredients
 
 
@@ -194,7 +194,7 @@ def calculate_ingredient(amount, unit, ingredient_name):
         ingredient_name: Matched ingredient name from climate DB
 
     Returns:
-        Dict with keys: grams, co2, source_db, energy_kj, fat_g, carbs_g, protein_g
+        Dict with keys: grams, co2, source_db, density_applied, energy_kj, fat_g, carbs_g, protein_g
         Returns None if ingredient not found in database.
     """
     db_match = get_ingredient_by_name(ingredient_name)
@@ -209,6 +209,10 @@ def calculate_ingredient(amount, unit, ingredient_name):
     protein = db_match['protein_g'] or 0
     source_db = db_match['source_db']
 
+    # Calculate density (only applies to volume units)
+    clean_unit = UNIT_MAP.get(unit.lower(), unit.lower())
+    density_applied = get_density(ingredient_name) if clean_unit in VOLUME_UNITS else None
+
     grams = get_weight_in_grams(amount, unit, ingredient_name)
     item_co2 = (grams / 1000) * co2_val
 
@@ -216,6 +220,7 @@ def calculate_ingredient(amount, unit, ingredient_name):
         'grams': round(grams, 1),
         'co2': round(item_co2, 3),
         'source_db': source_db,
+        'density_applied': density_applied,
         'energy_kj': energy_kj,
         'fat_g': fat,
         'carbs_g': carbs,
@@ -273,7 +278,8 @@ def calculate_recipe_totals(ingredients):
             'unit': unit,
             'grams': grams,
             'co2': item_co2,
-            'source_db': result['source_db']
+            'source_db': result['source_db'],
+            'density_applied': result['density_applied']
         })
 
     nutrition = {

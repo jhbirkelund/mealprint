@@ -22,25 +22,62 @@ UNIT_MAP = _units_config['unit_map']
 _aliases_config = load_json_config('ingredient_aliases.json')
 INGREDIENT_ALIASES = _aliases_config['aliases']
 
+# Load density configuration for volume-to-weight conversions
+DENSITIES = load_json_config('densities.json')
+
+# Volume units that need density conversion (ml-based)
+VOLUME_UNITS = {'ml', 'dl', 'l', 'cup', 'tbsp', 'tsp', 'drop', 'pinch', 'dash', 'quart'}
+
+def get_density(ingredient_name):
+    """
+    Get density (g/ml) for ingredient based on keyword matching.
+    Returns density multiplier for converting ml to grams.
+    """
+    name_lower = ingredient_name.lower()
+
+    for category, config in DENSITIES['categories'].items():
+        # Check exclusions first
+        if any(excl in name_lower for excl in config.get('exclude', [])):
+            continue
+        # Check keywords
+        if any(kw in name_lower for kw in config['keywords']):
+            return config['density']
+
+    return DENSITIES['default_density']
+
 def get_weight_in_grams(amount, unit, ingredient_name=""):
+    """
+    Convert amount + unit to grams.
+    - Volume units (cup, tbsp, ml, etc.) apply ingredient-specific density
+    - Weight units (g, kg, lb, oz) convert directly
+    - Piece units look up ingredient weights
+    """
     name = ingredient_name.lower()
     clean_unit = UNIT_MAP.get(unit.lower(), unit.lower())
 
-    # If it's a standard unit (g, kg, cup, etc.), just do the math
-    if clean_unit in CONVERSIONS["units"] and clean_unit not in ["piece", "pcs", "unit"]:
+    # Volume units: convert to ml first, then apply density
+    if clean_unit in VOLUME_UNITS:
+        ml_value = amount * CONVERSIONS["units"][clean_unit]
+        density = get_density(ingredient_name)
+        return ml_value * density
+
+    # Weight units (g, kg, lb, oz): direct conversion
+    if clean_unit in CONVERSIONS["units"] and clean_unit not in ["piece", "pcs", "unit", "handful", "sprinkling"]:
         return amount * CONVERSIONS["units"][clean_unit]
-    
-    # Check if the unit is 'pieces' look for a keyword match
+
+    # Fixed weight units (handful, sprinkling) - no density needed
+    if clean_unit in ["handful", "sprinkling"]:
+        return amount * CONVERSIONS["units"][clean_unit]
+
+    # Piece units: lookup ingredient weight
     if clean_unit in ["piece", "pcs", "unit"]:
         for key in CONVERSIONS["ingredients"]:
             if key in name:
                 return amount * CONVERSIONS["ingredients"][key]
+        # Fall back to default piece weight (100g)
+        return amount * CONVERSIONS["units"]["piece"]
 
-        # If the ingredient isn't in list, fall back to 100g
-        item_weight = CONVERSIONS["ingredients"].get(ingredient_name.lower(), CONVERSIONS["units"]["piece"])
-        return amount * item_weight
-    
-    #If the unit is totally unknown, return 0
+    # Unknown unit - return 0
     return 0
 
 FILENAME = "recipes.json"

@@ -109,6 +109,10 @@ def init_db():
                           WHERE table_name='recipe_ingredients' AND column_name='matched_by') THEN
                 ALTER TABLE recipe_ingredients ADD COLUMN matched_by TEXT DEFAULT 'fuzzy';
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipe_ingredients' AND column_name='density_applied') THEN
+                ALTER TABLE recipe_ingredients ADD COLUMN density_applied REAL;
+            END IF;
         END $$;
     ''')
 
@@ -228,8 +232,8 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
     # Insert ingredients
     for ing in ingredients:
         cur.execute('''
-            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             recipe_id,
             ing.get('original_line', ''),
@@ -239,7 +243,8 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
             ing.get('grams', 0),
             ing.get('co2', 0),
             ing.get('source_db', ''),
-            ing.get('matched_by', 'fuzzy')
+            ing.get('matched_by', 'fuzzy'),
+            ing.get('density_applied')
         ))
 
     # Insert tags
@@ -268,7 +273,7 @@ def get_all_recipes():
     result = []
     for r in recipes:
         # Get ingredients for this recipe (including original_line, source_db, and matched_by for paper trail)
-        cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by FROM recipe_ingredients WHERE recipe_id = %s', (r['id'],))
+        cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied FROM recipe_ingredients WHERE recipe_id = %s', (r['id'],))
         ingredients = [dict(ing) for ing in cur.fetchall()]
 
         # Get tags for this recipe
@@ -326,7 +331,7 @@ def get_recipe_by_id(recipe_id):
         return None
 
     # Get ingredients (including original_line, source_db, and matched_by for paper trail)
-    cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
+    cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
     ingredients = [dict(ing) for ing in cur.fetchall()]
 
     # Get tags
@@ -421,8 +426,8 @@ def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings
     # Insert new ingredients
     for ing in ingredients:
         cur.execute('''
-            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ''', (
             recipe_id,
             ing.get('original_line', ''),
@@ -432,7 +437,8 @@ def update_recipe_in_db(recipe_id, recipe_name, ingredients, total_co2, servings
             ing.get('grams', 0),
             ing.get('co2', 0),
             ing.get('source_db', ''),
-            ing.get('matched_by', 'fuzzy')
+            ing.get('matched_by', 'fuzzy'),
+            ing.get('density_applied')
         ))
 
     # Insert new tags

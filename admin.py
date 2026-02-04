@@ -211,7 +211,7 @@ def review_recipe(recipe_id):
 @admin_required
 def save_recipe(recipe_id):
     """Save edited recipe from admin review."""
-    from recipe_manager import get_weight_in_grams
+    from recipe_manager import get_weight_in_grams, get_density, VOLUME_UNITS, UNIT_MAP
 
     # Get form data
     servings = float(request.form.get('servings', 1))
@@ -262,6 +262,11 @@ def save_recipe(recipe_id):
             source_db = 'not_found'
 
         total_co2 += co2
+
+        # Calculate density (only applies to volume units)
+        clean_unit = UNIT_MAP.get(unit.lower(), unit.lower())
+        density_applied = get_density(item_name) if clean_unit in VOLUME_UNITS else None
+
         ingredients.append({
             'original_line': original_line,
             'item': item_name,
@@ -270,7 +275,8 @@ def save_recipe(recipe_id):
             'grams': grams,
             'co2': co2,
             'source_db': source_db,
-            'matched_by': matched_by
+            'matched_by': matched_by,
+            'density_applied': density_applied
         })
 
     co2_per_serving = total_co2 / servings if servings > 0 else total_co2
@@ -325,9 +331,9 @@ def save_recipe(recipe_id):
     # Insert new ingredients
     for ing in ingredients:
         cur.execute('''
-            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        ''', (recipe_id, ing['original_line'], ing['item'], ing['amount'], ing['unit'], ing['grams'], ing['co2'], ing['source_db'], ing.get('matched_by', 'fuzzy')))
+            INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (recipe_id, ing['original_line'], ing['item'], ing['amount'], ing['unit'], ing['grams'], ing['co2'], ing['source_db'], ing.get('matched_by', 'fuzzy'), ing.get('density_applied')))
 
     # Delete old tags and insert new ones
     cur.execute('DELETE FROM recipe_tags WHERE recipe_id = %s', (recipe_id,))
@@ -458,9 +464,9 @@ def rescrape_recipe(recipe_id):
                 mistral_count += 1
 
             cur.execute('''
-                INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (recipe_id, ing['original_line'], matched_item, ing['amount'], ing['unit'], 0, 0, '', matched_by))
+                INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (recipe_id, ing['original_line'], matched_item, ing['amount'], ing['unit'], 0, 0, '', matched_by, None))
 
         conn.commit()
         cur.close()

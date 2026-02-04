@@ -1,0 +1,73 @@
+{
+    "categories": {
+        "flour": {
+            "density": 0.53,
+            "keywords": ["flour"],
+            "exclude": ["cauliflower", "sunflower"]
+        },
+        "sugar_granulated": {
+            "density": 0.85,
+            "keywords": ["sugar"],
+            "exclude": ["sugar snap"]
+        },
+        "sugar_powdered": {
+            "density": 0.56,
+            "keywords": ["icing sugar", "powdered sugar", "confectioner"]
+        },
+        "oil": {
+            "density": 0.92,
+            "keywords": ["oil"],
+            "exclude": ["oily", "foil"]
+        },
+        "butter": {
+            "density": 0.91,
+            "keywords": ["butter"],
+            "exclude": ["buttermilk", "butternut", "peanut butter"]
+        },
+        "honey": {
+            "density": 1.42,
+            "keywords": ["honey"]
+        },
+        "milk": {
+            "density": 1.03,
+            "keywords": ["milk"],
+            "exclude": ["coconut milk", "oat milk", "almond milk"]
+        },
+        "cream": {
+            "density": 1.01,
+            "keywords": ["cream"],
+            "exclude": ["ice cream", "cream cheese"]
+        },
+        "oats": {
+            "density": 0.38,
+            "keywords": ["oats", "oatmeal", "rolled oat"]
+        },
+        "rice": {
+            "density": 0.85,
+            "keywords": ["rice"],
+            "exclude": ["rice flour", "rice noodle", "rice milk"]
+        },
+        "nuts": {
+            "density": 0.53,
+            "keywords": ["almond", "walnut", "pecan", "cashew", "peanut"],
+            "exclude": ["almond milk", "peanut butter"]
+        },
+        "cocoa": {
+            "density": 0.35,
+            "keywords": ["cocoa powder", "cacao powder"]
+        },
+        "syrup": {
+            "density": 1.38,
+            "keywords": ["syrup", "maple", "agave", "molasses"]
+        },
+        "yogurt": {
+            "density": 1.03,
+            "keywords": ["yogurt", "yoghurt"]
+        },
+        "water": {
+            "density": 1.0,
+            "keywords": ["water", "broth", "stock", "bouillon", "juice"]
+        }
+    },
+    "default_density": 1.0
+}
