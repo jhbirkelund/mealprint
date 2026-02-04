@@ -39,8 +39,8 @@ Requires `DATABASE_URL` pointing to Supabase.
 
 | File | Purpose |
 |------|---------|
-| `manual_app.py` | Flask web app - recipe input, calculation, history |
-| `admin.py` | Admin blueprint - bulk import, review queue, job monitoring |
+| `manual_app.py` | Flask web app - recipe input, calculation, history, resources |
+| `admin.py` | Admin blueprint - bulk import, review queue, published list, job monitoring |
 | `db.py` | Database layer - recipes, ingredients, climate data, import jobs |
 | `ingredient_matcher.py` | Parsing & matching - quantulum3 + rapidfuzz + Mistral AI fallback |
 | `recipe_manager.py` | Utilities - unit conversion, density lookup, rating calculation |
@@ -51,7 +51,7 @@ Requires `DATABASE_URL` pointing to Supabase.
 
 **Ingredient Matching Pipeline:**
 1. Parse with quantulum3 (extracts amounts/units)
-2. Preprocess informal units (handful, spsk, knivspids)
+2. Preprocess informal units (handful, dash, pinch, spsk, knivspids) - handles unitless "dash of X"
 3. Check aliases (`config/ingredient_aliases.json`)
 4. Hybrid matching: token-based + rapidfuzz against 2,957 ingredients
 5. AI fallback (Mistral) when confidence < 92%
@@ -73,7 +73,8 @@ Requires `DATABASE_URL` pointing to Supabase.
 1. Submit URLs → creates import job
 2. Run job → scrapes, auto-matches, saves as unpublished
 3. Review queue → edit ingredients, approve/reject
-4. AI re-match available for low-confidence matches
+4. Published list → edit/rescrape existing recipes
+5. AI re-match available for low-confidence matches
 
 ### Templates & Design
 
@@ -82,6 +83,7 @@ Jinja2 + Tailwind CSS (CDN). Key patterns:
 - Cards: `bg-white rounded-3xl shadow-sm border border-slate-200`
 - CO2 colors: emerald (<1.0), amber (1.0-1.8), rose (>1.8 kg)
 - Logo: Sour Gummy font (Medium 500, #4A7C59)
+- Mobile: Hamburger menu (hidden md:flex pattern)
 - JSON in forms: use single-quoted attributes `value='{{ data | tojson }}'`
 
 ### Database Schema
@@ -109,8 +111,8 @@ import_items (job_id, url, status, recipe_id, error_message)
 
 | File | Purpose |
 |------|---------|
-| `config/units.json` | Unit conversions, ingredient weights, unit name mappings |
-| `config/ingredient_aliases.json` | Common terms → DB names (herbs, spices, etc.) |
+| `config/units.json` | Unit conversions (g, cup, fl oz, can), ingredient weights (egg, potato, chili), unit mappings |
+| `config/ingredient_aliases.json` | Common terms → DB names (herbs, spices, fish sauce, cranberry, etc.) |
 | `config/densities.json` | Density categories for volume→weight conversion |
 
 ### Migration Scripts
@@ -126,6 +128,17 @@ import_items (job_id, url, status, recipe_id, error_message)
 
 Core: flask, quantulum3, recipe_scrapers, rapidfuzz, psycopg2-binary, gunicorn
 Import only: pandas, openpyxl
+
+## Public Pages
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Explore - recipe list with search and tag filters |
+| `/new` | Add Recipe - manual entry or URL scrape |
+| `/recipe/<id>` | Recipe detail with CO2 breakdown |
+| `/resources` | White papers index (methodology documentation) |
+| `/resources/density` | Density conversion white paper |
+| `/about-rating` | Carbon rating system explanation |
 
 ## Roadmap
 
