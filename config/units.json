@@ -10,6 +10,7 @@
         "cup": 240,
         "lb": 454,
         "oz": 28.35,
+        "fl oz": 29.57,
         "drop": 0.05,
         "pinch": 0.3,
         "dash": 0.6,
@@ -37,7 +38,20 @@
         "lemon": 85,
         "lemon juice": 30,
         "lime": 65,
-        "lime juice": 25
+        "lime juice": 25,
+        "potato": 170,
+        "potatoes": 170,
+        "chili": 15,
+        "chilli": 15,
+        "chile": 15,
+        "spring onion": 15,
+        "spring onions": 15,
+        "green onion": 15,
+        "green onions": 15,
+        "scallion": 15,
+        "scallions": 15,
+        "can": 400,
+        "tin": 400
     },
     "unit_map": {
         "cubic centimetre": "ml",
@@ -94,6 +108,14 @@
         "quarts": "quart",
         "qt": "quart",
         "dash": "dash",
-        "dashes": "dash"
+        "dashes": "dash",
+        "fl oz": "fl oz",
+        "floz": "fl oz",
+        "fluid ounce": "fl oz",
+        "fluid ounces": "fl oz",
+        "can": "can",
+        "cans": "can",
+        "tin": "can",
+        "tins": "can"
     }
 }

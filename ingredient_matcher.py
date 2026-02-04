@@ -13,12 +13,30 @@ from db import get_ingredient_by_name, get_all_climate_ingredients
 
 
 # Informal units that quantulum3 doesn't recognize - map to standard units
+# These get replaced BEFORE quantulum3 parsing to handle "dash of X" without a number
 # Note: Danish spoon units (tsk, spsk) are now in config/units.json unit_map
 INFORMAL_UNITS = {
-    # English
+    # English - quantities without numbers
+    'a dash of': '1 dash',
+    'dash of': '1 dash',
+    'a dash': '1 dash',
+    'dash': '1 dash',
+    'dashes': '2 dash',
+    'a pinch of': '1 pinch',
+    'pinch of': '1 pinch',
+    'a pinch': '1 pinch',
+    'pinch': '1 pinch',
+    'pinches': '2 pinch',
+    'a handful of': '1 handful',
+    'handful of': '1 handful',
+    'a handful': '1 handful',
     'handful': '30g',
-    'handfuls': '30g',
+    'handfuls': '60g',
+    'sprinkling of': '2g',
+    'a sprinkling of': '2g',
     'sprinkling': '2g',
+    'sprinkle of': '2g',
+    'a sprinkle of': '2g',
     'sprinkle': '2g',
     # Danish
     'stk': '1 piece',    # styk (piece)
@@ -99,10 +117,11 @@ def parse_ingredients(raw_text_block, climate_names=None):
             continue
 
         # Preprocess: replace informal units with gram equivalents
+        # Sort by length (longest first) to match "a dash of" before "dash"
         line_lower = line.lower()
-        for informal, replacement in INFORMAL_UNITS.items():
+        for informal, replacement in sorted(INFORMAL_UNITS.items(), key=lambda x: len(x[0]), reverse=True):
             if informal in line_lower:
-                line = re.sub(rf'(\d+\s*)?{informal}', replacement, line, flags=re.IGNORECASE)
+                line = re.sub(rf'(\d+\s*)?{re.escape(informal)}', replacement, line, flags=re.IGNORECASE)
                 break
 
         quants = quant_parser.parse(line)

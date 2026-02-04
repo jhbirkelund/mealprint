@@ -550,6 +550,14 @@ def delete(recipe_id):
 def about_rating():
     return render_template('about.html')
 
+@app.route('/resources')
+def resources():
+    return render_template('resources.html')
+
+@app.route('/resources/density')
+def resources_density():
+    return render_template('density.html')
+
 # This MUST be at the very bottom of the file
 if __name__ == '__main__':
     debug_mode = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'

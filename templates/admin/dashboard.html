@@ -7,10 +7,10 @@
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
     <!-- Published Recipes -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+    <a href="{{ url_for('admin.published_list') }}" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:border-emerald-300 transition-colors">
         <div class="text-3xl font-bold text-emerald-600">{{ published_count }}</div>
         <div class="text-slate-600 text-sm mt-1">Published Recipes</div>
-    </div>
+    </a>
 
     <!-- Pending Review -->
     <a href="{{ url_for('admin.review_queue') }}" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hover:border-amber-300 transition-colors">

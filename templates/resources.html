@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Resources - Mealprint{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto pt-10">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Resources</h1>
+        <p class="text-slate-500 mt-2">White papers and methodology documentation</p>
+    </div>
+
+    <!-- Resource Cards -->
+    <div class="space-y-4">
+
+        <!-- Rating System -->
+        <a href="/about-rating" class="block bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:border-emerald-300 hover:shadow-md transition">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900 tracking-tight">Understanding Carbon Footprints</h2>
+                    <p class="text-slate-500 mt-1">How Mealprint rates recipes, benchmarks for sustainable eating, and the science behind our thresholds.</p>
+                    <div class="flex gap-2 mt-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Methodology</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">Rating System</span>
+                    </div>
+                </div>
+                <span class="text-slate-400 text-xl">&rarr;</span>
+            </div>
+        </a>
+
+        <!-- Density Conversion -->
+        <a href="/resources/density" class="block bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:border-emerald-300 hover:shadow-md transition">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold text-slate-900 tracking-tight">Density-Based Volume Conversion</h2>
+                    <p class="text-slate-500 mt-1">Why 1 cup of flour isn't 240g, how we handle ingredient-specific densities, and our data sources.</p>
+                    <div class="flex gap-2 mt-3">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Technical</span>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">White Paper</span>
+                    </div>
+                </div>
+                <span class="text-slate-400 text-xl">&rarr;</span>
+            </div>
+        </a>
+
+    </div>
+
+    <!-- Footer note -->
+    <div class="mt-8 text-center">
+        <p class="text-slate-400 text-sm">More resources coming soon</p>
+    </div>
+
+</div>
+{% endblock %}

@@ -96,6 +96,9 @@
         "cayenne": "Cayenne pepper",
         "cayenne pepper": "Cayenne pepper",
         "chili powder": "Cayenne pepper",
+        "chilli powder": "Cayenne pepper",
+        "red pepper flakes": "Cayenne pepper",
+        "crushed red pepper": "Cayenne pepper",
         "curry powder": "Curry, powder",
         "curry": "Curry, powder",
         "coriander seeds": "Coriander, seed",
@@ -206,6 +209,14 @@
         "lemon juice": "Lemon juice",
         "lime": "Lime, raw",
         "limes": "Lime, raw",
-        "lime juice": "Lime juice"
+        "lime juice": "Lime juice",
+
+        "cranberry": "Raisins, dried",
+        "cranberries": "Raisins, dried",
+        "dried cranberries": "Raisins, dried",
+
+        "fish sauce": "Soya sauce",
+        "nam pla": "Soya sauce",
+        "nuoc mam": "Soya sauce"
     }
 }

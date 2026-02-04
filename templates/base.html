@@ -33,14 +33,48 @@
     <nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="/" class="text-xl" style="font-family: 'Sour Gummy', sans-serif; font-weight: 500; color: #4A7C59;">Mealprint</a>
-            <div class="flex gap-4">
+
+            <!-- Desktop menu -->
+            <div class="hidden md:flex gap-4 items-center">
                 <a href="/" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Explore</a>
                 <a href="/new" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Add Recipe</a>
-                <a href="/about-rating" class="text-slate-600 hover:text-slate-900 text-sm font-medium">About</a>
-                <a href="/admin" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Admin</a>
+                <a href="/resources" class="text-slate-600 hover:text-slate-900 text-sm font-medium">Resources</a>
+                <span class="text-slate-300">|</span>
+                <a href="/admin" class="text-slate-400 hover:text-slate-500 text-sm">Admin</a>
+            </div>
+
+            <!-- Mobile hamburger button -->
+            <button id="mobile-menu-btn" class="md:hidden p-2 text-slate-600 hover:text-slate-900" aria-label="Toggle menu">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path id="hamburger-icon" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    <path id="close-icon" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Mobile menu dropdown -->
+        <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200 bg-white">
+            <div class="max-w-4xl mx-auto px-4 py-3 flex flex-col gap-3">
+                <a href="/" class="text-slate-600 hover:text-slate-900 text-sm font-medium py-1">Explore</a>
+                <a href="/new" class="text-slate-600 hover:text-slate-900 text-sm font-medium py-1">Add Recipe</a>
+                <a href="/resources" class="text-slate-600 hover:text-slate-900 text-sm font-medium py-1">Resources</a>
+                <hr class="border-slate-200">
+                <a href="/admin" class="text-slate-400 hover:text-slate-500 text-sm py-1">Admin</a>
             </div>
         </div>
     </nav>
+
+    <script>
+        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            const hamburger = document.getElementById('hamburger-icon');
+            const close = document.getElementById('close-icon');
+
+            menu.classList.toggle('hidden');
+            hamburger.classList.toggle('hidden');
+            close.classList.toggle('hidden');
+        });
+    </script>
 
     <!-- Main Content -->
     <main class="max-w-4xl mx-auto px-4 py-6">

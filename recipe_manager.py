@@ -26,7 +26,7 @@ INGREDIENT_ALIASES = _aliases_config['aliases']
 DENSITIES = load_json_config('densities.json')
 
 # Volume units that need density conversion (ml-based)
-VOLUME_UNITS = {'ml', 'dl', 'l', 'cup', 'tbsp', 'tsp', 'drop', 'pinch', 'dash', 'quart'}
+VOLUME_UNITS = {'ml', 'dl', 'l', 'cup', 'tbsp', 'tsp', 'drop', 'pinch', 'dash', 'quart', 'fl oz'}
 
 def get_density(ingredient_name):
     """
@@ -70,11 +70,13 @@ def get_weight_in_grams(amount, unit, ingredient_name=""):
         return amount * CONVERSIONS["units"][clean_unit]
 
     # Piece units: lookup ingredient weight
-    if clean_unit in ["piece", "pcs", "unit"]:
+    if clean_unit in ["piece", "pcs", "unit", "can"]:
         for key in CONVERSIONS["ingredients"]:
             if key in name:
                 return amount * CONVERSIONS["ingredients"][key]
-        # Fall back to default piece weight (100g)
+        # Fall back to default weight (100g for piece, 400g for can)
+        if clean_unit == "can":
+            return amount * CONVERSIONS["units"]["can"]
         return amount * CONVERSIONS["units"]["piece"]
 
     # Unknown unit - return 0

@@ -157,6 +157,29 @@ def run_job(job_id):
     return redirect(url_for('admin.review_queue'))
 
 
+@admin_bp.route('/published')
+@admin_required
+def published_list():
+    """List all published recipes."""
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, name, total_co2, co2_per_serving, source, domain, language, created_at
+        FROM recipes
+        WHERE is_published = TRUE
+        ORDER BY created_at DESC
+    """)
+
+    columns = ['id', 'name', 'total_co2', 'co2_per_serving', 'source', 'domain', 'language', 'created_at']
+    recipes = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    cur.close()
+    conn.close()
+
+    return render_template('admin/published.html', recipes=recipes)
+
+
 @admin_bp.route('/review')
 @admin_required
 def review_queue():
