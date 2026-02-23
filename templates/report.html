@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transparency Report – {{ recipe.name }} – Mealprint</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Sour+Gummy:wght@500&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] } } }
+        }
+    </script>
+</head>
+<body class="bg-white font-sans text-slate-800 antialiased">
+
+    <!-- Top bar -->
+    <div class="border-b border-slate-200 py-4">
+        <div class="max-w-4xl mx-auto px-6 flex items-center justify-between">
+            <a href="/" style="font-family: 'Sour Gummy', sans-serif; font-weight: 500; color: #4A7C59; font-size: 1.2rem;">Mealprint</a>
+            <span class="text-slate-400 text-sm font-medium tracking-wide uppercase text-xs">Transparency Report</span>
+        </div>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-6 py-12">
+
+        <!-- Report Header -->
+        <div class="mb-10">
+            <p class="text-slate-400 text-xs font-medium uppercase tracking-widest mb-2">Carbon Footprint Report</p>
+            <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight mb-3">{{ recipe.name }}</h1>
+            <div class="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                <span>Generated {{ report_date }}</span>
+                <span class="text-slate-300">·</span>
+                <a href="/recipe/{{ recipe.id }}" class="text-emerald-600 hover:text-emerald-700 transition">← Back to recipe</a>
+            </div>
+        </div>
+
+        <!-- CO2 Summary -->
+        <div class="grid grid-cols-3 gap-px bg-slate-200 rounded-2xl overflow-hidden mb-12">
+            <div class="bg-white p-6">
+                <p class="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">CO₂ per serving</p>
+                <p class="text-3xl font-bold tracking-tight
+                    {% if recipe.co2_per_serving < 1.0 %}text-emerald-600
+                    {% elif recipe.co2_per_serving < 1.8 %}text-amber-600
+                    {% else %}text-rose-600{% endif %}">
+                    {{ "%.2f"|format(recipe.co2_per_serving) }}<span class="text-base font-normal text-slate-400 ml-1">kg CO₂</span>
+                </p>
+            </div>
+            <div class="bg-white p-6">
+                <p class="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Total recipe CO₂</p>
+                <p class="text-3xl font-bold text-slate-900 tracking-tight">
+                    {{ "%.2f"|format(recipe.total_co2) }}<span class="text-base font-normal text-slate-400 ml-1">kg CO₂</span>
+                </p>
+            </div>
+            <div class="bg-white p-6">
+                <p class="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Servings</p>
+                <p class="text-3xl font-bold text-slate-900 tracking-tight">{{ recipe.servings|int }}</p>
+                {% if recipe.rating and recipe.rating.label %}
+                <p class="text-xs text-slate-400 mt-1">{{ recipe.rating.emoji }} {{ recipe.rating.label }} Footprint</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- About This Report -->
+        <section class="mb-12">
+            <h2 class="text-lg font-semibold text-slate-900 mb-4 pb-3 border-b border-slate-200">About This Report</h2>
+            <p class="text-slate-600 leading-relaxed mb-3">
+                This report provides a complete, verifiable audit trail of the carbon footprint calculation for <strong class="text-slate-800">{{ recipe.name }}</strong>. Every step of the methodology is documented — from raw ingredient text through unit conversion and database matching to the final CO₂ figure — enabling independent verification and full reproduction of the result.
+            </p>
+            <p class="text-slate-600 leading-relaxed">
+                This report is suitable for use in environmental disclosures, supplier documentation, and compliance with frameworks including the <strong class="text-slate-800">EU Green Claims Directive</strong>. All CO₂ figures are expressed in kilograms of CO₂ equivalent (kg CO₂e) and are based on life cycle assessment (LCA) data from peer-reviewed databases. For a full explanation of the rating methodology, visit the <a href="/resources" class="text-emerald-600 hover:underline">Mealprint Resources</a> page.
+            </p>
+        </section>
+
+        <!-- Data Sources -->
+        <section class="mb-12">
+            <h2 class="text-lg font-semibold text-slate-900 mb-4 pb-3 border-b border-slate-200">Data Sources</h2>
+            <p class="text-slate-600 text-sm mb-5">Ingredient CO₂ values are sourced from the following databases, applied in priority order. ClimateDB is used first; Agribalyse is used when no ClimateDB match is available.</p>
+            <div class="space-y-4">
+                <div class="border border-slate-200 rounded-xl p-5">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">Priority 1</span>
+                            <h3 class="font-semibold text-slate-900">ClimateDB</h3>
+                        </div>
+                        <a href="https://climatedb.dk" target="_blank" class="text-emerald-600 text-sm hover:underline flex-shrink-0">climatedb.dk ↗</a>
+                    </div>
+                    <p class="text-slate-500 text-sm leading-relaxed">A Danish database of CO₂ equivalents for food ingredients, derived from life cycle assessment studies. ClimateDB entries include both CO₂ data and nutritional values. Developed by the University of Copenhagen and maintained by Concito, Denmark's leading climate think tank.</p>
+                    <p class="text-slate-400 text-xs mt-3">Last imported into Mealprint: January 2025</p>
+                </div>
+                <div class="border border-slate-200 rounded-xl p-5">
+                    <div class="flex items-start justify-between mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Priority 2</span>
+                            <h3 class="font-semibold text-slate-900">Agribalyse</h3>
+                        </div>
+                        <a href="https://agribalyse.ademe.fr" target="_blank" class="text-emerald-600 text-sm hover:underline flex-shrink-0">agribalyse.ademe.fr ↗</a>
+                    </div>
+                    <p class="text-slate-500 text-sm leading-relaxed">A French national LCA database for agricultural and food products, developed and maintained by ADEME (the French Agency for Ecological Transition). Agribalyse covers over 2,500 food items and is widely used in European environmental impact assessment.</p>
+                    <p class="text-slate-400 text-xs mt-3">Last imported into Mealprint: January 2025</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Methodology -->
+        <section class="mb-12">
+            <h2 class="text-lg font-semibold text-slate-900 mb-4 pb-3 border-b border-slate-200">Calculation Methodology</h2>
+            <p class="text-slate-600 text-sm leading-relaxed mb-5">Each ingredient is processed through a four-step pipeline. The table in the following section documents the output of each step for every ingredient in this recipe.</p>
+            <ol class="space-y-4">
+                <li class="flex gap-4">
+                    <span class="flex-shrink-0 w-7 h-7 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full flex items-center justify-center">1</span>
+                    <div>
+                        <p class="font-semibold text-slate-800 text-sm">Parsing</p>
+                        <p class="text-slate-500 text-sm leading-relaxed mt-0.5">The raw ingredient text from the recipe source is parsed to extract a numeric amount and a unit of measurement (e.g., "1 cup flour" → amount: 1, unit: cup, ingredient: flour).</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="flex-shrink-0 w-7 h-7 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full flex items-center justify-center">2</span>
+                    <div>
+                        <p class="font-semibold text-slate-800 text-sm">Unit conversion to grams</p>
+                        <p class="text-slate-500 text-sm leading-relaxed mt-0.5">The amount is converted to grams. Weight units (g, kg, oz, lb) use standard conversion factors. Volume units (cup, tbsp, ml, tsp) are first converted to millilitres, then multiplied by an ingredient-specific density to produce grams. See the <a href="/resources/density" class="text-emerald-600 hover:underline">density white paper</a> for the full list of densities used.</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="flex-shrink-0 w-7 h-7 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full flex items-center justify-center">3</span>
+                    <div>
+                        <p class="font-semibold text-slate-800 text-sm">Ingredient matching</p>
+                        <p class="text-slate-500 text-sm leading-relaxed mt-0.5">The ingredient name is matched against the climate database. The matching pipeline applies, in order: alias lookup (curated synonyms), token-based matching (word overlap scoring), fuzzy text matching (RapidFuzz), and AI-assisted matching (Mistral) as a final fallback. The method used is recorded per ingredient.</p>
+                    </div>
+                </li>
+                <li class="flex gap-4">
+                    <span class="flex-shrink-0 w-7 h-7 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full flex items-center justify-center">4</span>
+                    <div>
+                        <p class="font-semibold text-slate-800 text-sm">CO₂ calculation</p>
+                        <p class="text-slate-500 text-sm leading-relaxed mt-0.5">The CO₂ contribution for each ingredient is calculated as: <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs font-mono">CO₂ (kg) = (grams ÷ 1000) × CO₂/kg</code>. Individual ingredient values are summed to produce the total recipe CO₂, which is then divided by the number of servings.</p>
+                    </div>
+                </li>
+            </ol>
+        </section>
+
+        <!-- Ingredient Audit Table -->
+        <section class="mb-12">
+            <h2 class="text-lg font-semibold text-slate-900 mb-1 pb-3 border-b border-slate-200">Ingredient Audit Trail</h2>
+            <p class="text-slate-500 text-sm mb-5">{{ recipe.ingredients|length }} ingredient{{ 's' if recipe.ingredients|length != 1 else '' }} · All values are per-recipe, not per-serving.</p>
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-slate-50 border-b border-slate-200">
+                            <th class="text-left py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide">Original text</th>
+                            <th class="text-left py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide">Parsed</th>
+                            <th class="text-left py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide">Weight conversion</th>
+                            <th class="text-left py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide">Matched ingredient</th>
+                            <th class="text-left py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide">Source DB</th>
+                            <th class="text-right py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide">CO₂/kg</th>
+                            <th class="text-right py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide">Calculation</th>
+                            <th class="text-right py-3 px-4 font-semibold text-slate-600 text-xs uppercase tracking-wide">CO₂ (kg)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for ing in recipe.ingredients %}
+                        <tr class="hover:bg-slate-50 transition">
+                            <!-- Original text -->
+                            <td class="py-3 px-4 text-slate-400 font-mono text-xs align-top">{{ ing.original_line or '—' }}</td>
+
+                            <!-- Parsed amount + unit -->
+                            <td class="py-3 px-4 text-slate-700 align-top whitespace-nowrap">{{ ing.amount }} {{ ing.unit }}</td>
+
+                            <!-- Weight conversion -->
+                            <td class="py-3 px-4 text-slate-700 align-top">
+                                {% if ing.density_applied %}
+                                <span class="font-medium">{{ ing.amount }} {{ ing.unit }}</span>
+                                <span class="text-slate-400"> → </span>{{ ing.ml_volume }} ml
+                                <span class="text-slate-400"> → </span><span class="font-semibold">{{ ing.grams|int }} g</span>
+                                <div class="text-xs text-slate-400 mt-1">density {{ ing.density_applied }} g/ml{% if ing.density_category %} · {{ ing.density_category }}{% endif %}</div>
+                                {% else %}
+                                <span class="font-semibold">{{ ing.grams|int }} g</span>
+                                <div class="text-xs text-slate-400 mt-1">direct conversion</div>
+                                {% endif %}
+                            </td>
+
+                            <!-- Matched ingredient + method -->
+                            <td class="py-3 px-4 align-top">
+                                <span class="text-slate-800 font-medium">{{ ing.item }}</span>
+                                <div class="text-xs text-slate-400 mt-1">
+                                    {% if ing.matched_by == 'ai' %}AI-assisted (Mistral)
+                                    {% elif ing.matched_by == 'alias' %}Alias lookup
+                                    {% elif ing.matched_by == 'token' %}Token match
+                                    {% elif ing.matched_by == 'fuzzy' %}Fuzzy match
+                                    {% elif ing.matched_by == 'manual' %}Manual selection
+                                    {% else %}{{ ing.matched_by or 'Fuzzy match' }}{% endif %}
+                                </div>
+                            </td>
+
+                            <!-- Source DB -->
+                            <td class="py-3 px-4 align-top whitespace-nowrap">
+                                {% if ing.source_db == 'ClimateDB' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-800">ClimateDB</span>
+                                {% elif ing.source_db == 'Agribalyse' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">Agribalyse</span>
+                                {% else %}
+                                <span class="text-slate-400 text-xs">{{ ing.source_db or '—' }}</span>
+                                {% endif %}
+                            </td>
+
+                            <!-- CO2/kg -->
+                            <td class="py-3 px-4 text-right text-slate-700 align-top whitespace-nowrap">
+                                {% if ing.co2_per_kg is not none %}{{ "%.2f"|format(ing.co2_per_kg) }}{% else %}<span class="text-slate-300">—</span>{% endif %}
+                            </td>
+
+                            <!-- Formula -->
+                            <td class="py-3 px-4 text-right text-slate-400 text-xs font-mono align-top whitespace-nowrap">
+                                {{ ing.grams|int }} ÷ 1000 × {% if ing.co2_per_kg is not none %}{{ "%.2f"|format(ing.co2_per_kg) }}{% else %}?{% endif %}
+                            </td>
+
+                            <!-- CO2 result -->
+                            <td class="py-3 px-4 text-right font-semibold text-slate-900 align-top whitespace-nowrap">{{ "%.3f"|format(ing.co2) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t-2 border-slate-300 bg-slate-50">
+                            <td colspan="7" class="py-3 px-4 font-semibold text-slate-700">Total recipe CO₂</td>
+                            <td class="py-3 px-4 text-right font-bold text-slate-900">{{ "%.3f"|format(recipe.total_co2) }}</td>
+                        </tr>
+                        <tr class="border-t border-slate-200 bg-slate-50">
+                            <td colspan="7" class="py-3 px-4 text-slate-500 text-sm">÷ {{ recipe.servings|int }} servings = CO₂ per serving</td>
+                            <td class="py-3 px-4 text-right font-bold
+                                {% if recipe.co2_per_serving < 1.0 %}text-emerald-600
+                                {% elif recipe.co2_per_serving < 1.8 %}text-amber-600
+                                {% else %}text-rose-600{% endif %}">
+                                {{ "%.3f"|format(recipe.co2_per_serving) }}
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </section>
+
+        <!-- Further Reading -->
+        <section class="mb-12">
+            <h2 class="text-lg font-semibold text-slate-900 mb-4 pb-3 border-b border-slate-200">Further Reading</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <a href="/about-rating" class="border border-slate-200 rounded-xl p-5 hover:border-emerald-300 transition block">
+                    <p class="font-semibold text-slate-800 text-sm mb-1">Carbon Rating System</p>
+                    <p class="text-slate-500 text-sm">How Mealprint classifies recipes and what the CO₂ thresholds represent.</p>
+                </a>
+                <a href="/resources/density" class="border border-slate-200 rounded-xl p-5 hover:border-emerald-300 transition block">
+                    <p class="font-semibold text-slate-800 text-sm mb-1">Density Conversions</p>
+                    <p class="text-slate-500 text-sm">How volume measurements are converted to grams using ingredient-specific densities.</p>
+                </a>
+                <a href="/resources" class="border border-slate-200 rounded-xl p-5 hover:border-emerald-300 transition block">
+                    <p class="font-semibold text-slate-800 text-sm mb-1">All Resources</p>
+                    <p class="text-slate-500 text-sm">White papers, methodology documentation, and full data source references.</p>
+                </a>
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 py-8">
+        <div class="max-w-4xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3 text-sm text-slate-500">
+                <span style="font-family: 'Sour Gummy', sans-serif; font-weight: 500; color: #4A7C59;">Mealprint</span>
+                <span class="text-slate-300">·</span>
+                <span>© Mealprint 2026. All rights reserved.</span>
+            </div>
+            <div class="flex gap-5 text-sm text-slate-400">
+                <a href="/" class="hover:text-slate-600 transition">Explore Recipes</a>
+                <a href="/resources" class="hover:text-slate-600 transition">Resources</a>
+                <a href="/recipe/{{ recipe.id }}" class="hover:text-slate-600 transition">Back to Recipe</a>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

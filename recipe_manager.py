@@ -45,6 +45,16 @@ def get_density(ingredient_name):
 
     return DENSITIES['default_density']
 
+def get_density_category(ingredient_name):
+    """Return the density category name for an ingredient, for use in transparency reports."""
+    name_lower = ingredient_name.lower()
+    for category, config in DENSITIES['categories'].items():
+        if any(excl in name_lower for excl in config.get('exclude', [])):
+            continue
+        if any(kw in name_lower for kw in config['keywords']):
+            return category.replace('_', ' ')
+    return None
+
 def get_weight_in_grams(amount, unit, ingredient_name=""):
     """
     Convert amount + unit to grams.

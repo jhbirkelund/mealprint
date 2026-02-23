@@ -2,7 +2,7 @@ from flask import Flask, request, render_template, redirect
 import json
 import os
 from quantulum3 import parser
-from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, calculate_rating
+from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, calculate_rating, get_density_category
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
 from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name, get_all_climate_ingredients
@@ -417,6 +417,28 @@ def recipe(recipe_id):
         r['rating'] = calculate_rating(r.get('co2_per_serving', 0))
 
     return render_template('recipe.html', recipe=r)
+
+@app.route('/recipe/<recipe_id>/report')
+def recipe_report(recipe_id):
+    from datetime import date
+    r = get_recipe_by_id(recipe_id)
+    if not r:
+        return redirect('/')
+
+    # Enrich each ingredient with co2_per_kg and density display details
+    for ing in r['ingredients']:
+        climate_data = get_ingredient_by_name(ing['item'])
+        ing['co2_per_kg'] = climate_data['co2_per_kg'] if climate_data else None
+
+        if ing.get('density_applied'):
+            ing['density_category'] = get_density_category(ing['item'])
+            ing['ml_volume'] = round(ing['grams'] / ing['density_applied'], 1)
+        else:
+            ing['density_category'] = None
+            ing['ml_volume'] = None
+
+    report_date = date.today().strftime('%B %d, %Y')
+    return render_template('report.html', recipe=r, report_date=report_date)
 
 @app.route('/edit/<recipe_id>')
 def edit(recipe_id):
