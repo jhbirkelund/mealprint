@@ -3,12 +3,12 @@
 {% block title %}Explore Recipes - Mealprint{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto pt-10">
+<div class="pt-6 md:pt-10">
 
     <!-- Header -->
     <div class="flex items-center justify-between mb-8">
         <div>
-            <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Explore Recipes</h1>
+            <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">Explore</h1>
             <p class="text-slate-500 mt-1">{{ recipes|length }} recipes</p>
         </div>
         <a href="/new" class="bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-sm font-medium transition shadow-sm">
@@ -17,73 +17,92 @@
     </div>
 
     {% if recipes %}
-    <!-- Search and Sort -->
-    <div class="flex flex-col md:flex-row gap-4 mb-6">
-        <input type="text" id="searchInput" placeholder="Search recipes..."
-            class="flex-1 px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400">
-        <select id="sortSelect" class="px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 bg-white">
-            <option value="date">Newest first</option>
-            <option value="co2-asc">Lowest CO2</option>
-            <option value="co2-desc">Highest CO2</option>
-            <option value="title">A-Z</option>
-        </select>
+    <!-- Sticky Filter Bar -->
+    <div class="sticky top-14 z-40 bg-slate-50/95 backdrop-blur-sm -mx-4 px-4 pb-4 pt-1">
+
+        <!-- Row 1: Search + Sort toggles -->
+        <div class="flex items-center gap-3 mb-3">
+            <!-- Compact search -->
+            <div class="relative flex-1">
+                <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search..."
+                    class="w-full pl-9 pr-4 py-2 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400 text-sm bg-white">
+            </div>
+            <!-- Sort toggles -->
+            <div class="flex gap-1 bg-white border border-slate-200 rounded-2xl p-1 flex-shrink-0">
+                <button data-sort="rating" class="sort-btn active px-3 py-1.5 rounded-xl text-xs font-medium transition bg-slate-900 text-white">Best</button>
+                <button data-sort="date" class="sort-btn px-3 py-1.5 rounded-xl text-xs font-medium transition text-slate-500 hover:text-slate-700">New</button>
+                <button data-sort="title" class="sort-btn px-3 py-1.5 rounded-xl text-xs font-medium transition text-slate-500 hover:text-slate-700">A–Z</button>
+            </div>
+        </div>
+
+        <!-- Row 2: Tag strip -->
+        {% if all_tags %}
+        <div class="relative">
+            <div class="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                <button data-tag="all" class="tag-filter flex-shrink-0 bg-emerald-500 text-white px-3 py-1.5 rounded-2xl text-xs font-medium transition">
+                    All
+                </button>
+                {% for tag in all_tags %}
+                <button data-tag="{{ tag }}" class="tag-filter flex-shrink-0 bg-white border border-slate-200 text-slate-600 hover:border-slate-300 px-3 py-1.5 rounded-2xl text-xs font-medium transition">
+                    {{ tag }}
+                </button>
+                {% endfor %}
+            </div>
+            <!-- Fade hint at right edge -->
+            <div class="absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-slate-50/95 to-transparent pointer-events-none"></div>
+        </div>
+        {% endif %}
+
     </div>
 
-    <!-- Tag Filters -->
-    {% if all_tags %}
-    <div class="flex flex-wrap gap-2 mb-6">
-        <button data-tag="all" class="tag-filter active bg-emerald-500 text-white px-4 py-2 rounded-2xl text-sm font-medium transition">
-            Show All
-        </button>
-        {% for tag in all_tags %}
-        <button data-tag="{{ tag }}" class="tag-filter bg-slate-100 text-slate-600 hover:bg-slate-200 px-4 py-2 rounded-2xl text-sm font-medium transition">
-            {{ tag }}
-        </button>
-        {% endfor %}
-    </div>
-    {% endif %}
     <!-- Recipe Grid -->
     <div id="recipeGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% for r in recipes %}
-        <a href="/recipe/{{ r.id }}" class="recipe-card bg-white rounded-3xl shadow-sm border border-slate-200 p-6 hover:shadow-md transition group flex gap-4"
-            data-name="{{ r.name|lower }}"
-            data-tags="{{ r.tags|join(',') if r.tags else '' }}"
-            data-co2="{{ r.co2_per_serving }}"
-            data-index="{{ loop.index }}">
-            <div class="flex-1 min-w-0">
-                <h2 class="text-lg font-semibold text-slate-900 group-hover:text-emerald-600 transition truncate">{{ r.name }}</h2>
-                <div class="flex items-center gap-2 mt-2">
-                    <span class="text-2xl font-bold
-                        {% if r.co2_per_serving < 1.0 %}text-emerald-500
-                        {% elif r.co2_per_serving < 1.8 %}text-amber-500
-                        {% else %}text-rose-500{% endif %}">
-                        {{ "%.2f"|format(r.co2_per_serving) }}
-                    </span>
-                    <span class="text-slate-400 text-xs">kg CO₂</span>
-                </div>
-                {% if r.tags %}
-                <div class="flex flex-wrap gap-1 mt-2">
-                    {% for tag in r.tags[:3] %}
-                    <span class="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full">{{ tag }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                {% if r.rating and r.rating.label %}
-                <div class="mt-2">
-                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-medium
-                        {% if 'Low' in r.rating.label %}bg-emerald-100 text-emerald-900
-                        {% elif 'Medium' in r.rating.label %}bg-amber-100 text-amber-900
-                        {% else %}bg-rose-100 text-rose-900{% endif %}">
-                        {{ r.rating.emoji }} {{ r.rating.label }}
-                    </span>
-                </div>
-                {% endif %}
-            </div>
+        <a href="/recipe/{{ r.id }}"
+           class="recipe-card relative rounded-3xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow group block"
+           style="aspect-ratio: 4/3"
+           data-name="{{ r.name|lower }}"
+           data-tags="{{ r.tags|join(',') if r.tags else '' }}"
+           data-co2="{{ r.co2_per_serving }}"
+           data-index="{{ loop.index }}">
+
+            <!-- Image or fallback -->
             {% if r.og_image_url %}
-            <div class="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-slate-100">
-                <img src="{{ r.og_image_url }}" alt="{{ r.name }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+            <img src="{{ r.og_image_url }}" alt="{{ r.name }}"
+                class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+            {% else %}
+            <div class="absolute inset-0
+                {% if r.co2_per_serving < 1.0 %}bg-gradient-to-br from-emerald-100 to-emerald-200
+                {% elif r.co2_per_serving < 1.8 %}bg-gradient-to-br from-amber-100 to-amber-200
+                {% else %}bg-gradient-to-br from-rose-100 to-rose-200{% endif %}">
             </div>
             {% endif %}
+
+            <!-- Gradient overlay -->
+            <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent"></div>
+
+            <!-- Bottom content -->
+            <div class="absolute bottom-0 left-0 right-0 p-5">
+                <h2 class="text-white font-semibold text-lg leading-snug line-clamp-2 mb-2">{{ r.name }}</h2>
+                <div class="flex items-center gap-2 flex-wrap">
+                    {% if r.rating and r.rating.label %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-medium
+                        {% if 'Low' in r.rating.label %}bg-emerald-500/90 text-white
+                        {% elif 'Medium' in r.rating.label %}bg-amber-500/90 text-white
+                        {% else %}bg-rose-500/90 text-white{% endif %}">
+                        {{ r.rating.emoji }} {{ r.rating.label }}
+                    </span>
+                    {% endif %}
+                    {% if r.site_rating %}
+                    <span class="inline-flex items-center gap-1 bg-white/20 backdrop-blur-sm text-white px-2.5 py-1 rounded-xl text-xs font-medium">
+                        ⭐ {{ r.site_rating }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
         </a>
         {% endfor %}
     </div>
@@ -102,75 +121,80 @@
 
 </div>
 
+<style>
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+</style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
-    const sortSelect = document.getElementById('sortSelect');
+    const sortBtns = document.querySelectorAll('.sort-btn');
     const tagFilters = document.querySelectorAll('.tag-filter');
     const recipeGrid = document.getElementById('recipeGrid');
     let recipeCards = Array.from(document.querySelectorAll('.recipe-card'));
 
     let activeTag = 'all';
+    let activeSort = 'rating';
 
-    // Tag filter click handler
+    // Sort toggle handlers
+    sortBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            sortBtns.forEach(b => {
+                b.classList.remove('active', 'bg-slate-900', 'text-white');
+                b.classList.add('text-slate-500');
+            });
+            this.classList.add('active', 'bg-slate-900', 'text-white');
+            this.classList.remove('text-slate-500');
+            activeSort = this.dataset.sort;
+            sortRecipes();
+        });
+    });
+
+    // Tag filter handlers
     tagFilters.forEach(button => {
         button.addEventListener('click', function() {
             tagFilters.forEach(b => {
-                b.classList.remove('active', 'bg-emerald-500', 'text-white');
-                b.classList.add('bg-slate-100', 'text-slate-600');
+                b.classList.remove('bg-emerald-500', 'text-white', 'border-emerald-500');
+                b.classList.add('bg-white', 'border-slate-200', 'text-slate-600');
             });
-            this.classList.add('active', 'bg-emerald-500', 'text-white');
-            this.classList.remove('bg-slate-100', 'text-slate-600');
-
+            this.classList.add('bg-emerald-500', 'text-white', 'border-emerald-500');
+            this.classList.remove('bg-white', 'border-slate-200', 'text-slate-600');
             activeTag = this.dataset.tag;
             filterRecipes();
         });
     });
 
-    // Search input handler
-    if (searchInput) {
-        searchInput.addEventListener('input', filterRecipes);
-    }
-
-    // Sort handler
-    if (sortSelect) {
-        sortSelect.addEventListener('change', sortRecipes);
-    }
+    if (searchInput) searchInput.addEventListener('input', filterRecipes);
 
     function sortRecipes() {
-        const sortBy = sortSelect.value;
-
         recipeCards.sort((a, b) => {
-            if (sortBy === 'date') {
-                return parseInt(a.dataset.index) - parseInt(b.dataset.index);
-            } else if (sortBy === 'co2-asc') {
+            if (activeSort === 'rating') {
                 return parseFloat(a.dataset.co2) - parseFloat(b.dataset.co2);
-            } else if (sortBy === 'co2-desc') {
-                return parseFloat(b.dataset.co2) - parseFloat(a.dataset.co2);
-            } else if (sortBy === 'title') {
+            } else if (activeSort === 'date') {
+                return parseInt(a.dataset.index) - parseInt(b.dataset.index);
+            } else if (activeSort === 'title') {
                 return a.dataset.name.localeCompare(b.dataset.name);
             }
             return 0;
         });
-
-        // Re-append cards in sorted order
         recipeCards.forEach(card => recipeGrid.appendChild(card));
         filterRecipes();
     }
 
     function filterRecipes() {
         const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
-
         recipeCards.forEach(card => {
             const name = card.dataset.name || '';
             const tags = card.dataset.tags || '';
-
             const matchesSearch = name.includes(searchTerm);
             const matchesTag = activeTag === 'all' || tags.split(',').includes(activeTag);
-
             card.style.display = (matchesSearch && matchesTag) ? '' : 'none';
         });
     }
+
+    // Apply default sort on page load
+    sortRecipes();
 });
 </script>
 {% endblock %}

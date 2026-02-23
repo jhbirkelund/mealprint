@@ -3,10 +3,36 @@
 {% block title %}{{ recipe.name }} - Mealprint{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto pt-10">
+<div class="pt-4 md:pt-8">
 
-    <!-- Header Card: Title + Source -->
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8">
+    <!-- Hero Image (if available) -->
+    {% if recipe.og_image_url %}
+    <div class="relative rounded-3xl overflow-hidden mb-6 shadow-sm">
+        {% if recipe.source and recipe.source.startswith('http') %}
+        <a href="{{ recipe.source }}" target="_blank" class="block">
+        {% endif %}
+            <img src="{{ recipe.og_image_url }}" alt="{{ recipe.name }}"
+                class="w-full h-64 md:h-96 object-cover">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+        {% if recipe.source and recipe.source.startswith('http') %}
+        </a>
+        {% endif %}
+        <!-- Title overlay -->
+        <div class="absolute bottom-0 left-0 right-0 p-6 md:p-8 pointer-events-none">
+            <h1 class="text-2xl md:text-4xl font-semibold text-white tracking-tight leading-tight">{{ recipe.name }}</h1>
+            {% if recipe.source and recipe.source.startswith('http') %}
+            <p class="mt-1 text-white/60 text-sm truncate">{{ recipe.source }}</p>
+            {% endif %}
+        </div>
+        <!-- Edit button -->
+        <div class="absolute top-4 right-4">
+            <a href="/edit/{{ recipe.id }}" class="bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white px-4 py-2 rounded-2xl text-sm font-medium transition">Edit</a>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- No image: text header card -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
         <div class="flex items-start justify-between">
             <div>
                 <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">{{ recipe.name }}</h1>
@@ -19,78 +45,78 @@
                     {% endif %}
                 </p>
                 {% endif %}
-                {% if recipe.tags %}
-                <div class="flex flex-wrap gap-2 mt-4">
-                    {% for tag in recipe.tags %}
-                    <span class="bg-slate-100 text-slate-500 text-xs font-medium px-3 py-1 rounded-full">{{ tag }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
             </div>
             <a href="/edit/{{ recipe.id }}" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-5 py-2.5 rounded-2xl text-sm font-medium transition">Edit</a>
         </div>
     </div>
+    {% endif %}
 
-    <!-- Impact Card with Image -->
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8">
-        <div class="flex flex-col md:flex-row gap-8">
-            <!-- CO2 Impact (left side) -->
-            <div class="flex-1">
-                <p class="text-slate-400 text-sm font-medium uppercase tracking-wide mb-2">Carbon Impact</p>
-                <div class="flex items-baseline gap-3">
-                    <span class="text-6xl md:text-7xl font-bold tracking-tight
-                        {% if recipe.co2_per_serving < 1.0 %}text-emerald-500
-                        {% elif recipe.co2_per_serving < 1.8 %}text-amber-500
-                        {% else %}text-rose-500{% endif %}">
-                        {{ "%.2f"|format(recipe.co2_per_serving) }}
-                    </span>
-                    <span class="text-slate-400 text-xl">kg CO₂ per serving</span>
-                </div>
-                {% if recipe.rating and recipe.rating.label %}
-                <div class="mt-6 flex items-center gap-3">
-                    <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium
-                        {% if 'Low' in recipe.rating.label %}bg-emerald-100 text-emerald-900
-                        {% elif 'Medium' in recipe.rating.label %}bg-amber-100 text-amber-900
-                        {% else %}bg-rose-100 text-rose-900{% endif %}">
-                        {{ recipe.rating.emoji }} {{ recipe.rating.label }} Footprint
-                    </span>
-                    <a href="/about-rating" class="text-slate-400 hover:text-emerald-600 transition" title="How are ratings calculated?">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                    </a>
-                </div>
-                {% endif %}
-                <p class="text-slate-400 text-sm mt-6">
-                    Total: {{ "%.2f"|format(recipe.total_co2) }} kg CO₂ for {{ recipe.servings|int }} servings
-                </p>
+    <!-- Tags -->
+    {% if recipe.tags %}
+    <div class="flex flex-wrap gap-2 mb-6">
+        {% for tag in recipe.tags %}
+        <span class="bg-white border border-slate-200 text-slate-500 text-xs font-medium px-3 py-1.5 rounded-full shadow-sm">{{ tag }}</span>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Impact Card -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+        <!-- Colored top bar -->
+        <div class="h-1.5 {% if recipe.co2_per_serving < 1.0 %}bg-emerald-400{% elif recipe.co2_per_serving < 1.8 %}bg-amber-400{% else %}bg-rose-400{% endif %}"></div>
+        <div class="p-8">
+            <p class="text-slate-400 text-sm font-medium uppercase tracking-wide mb-3">Carbon Impact</p>
+            <div class="flex items-baseline gap-3 mb-6">
+                <span class="text-6xl md:text-7xl font-bold tracking-tight
+                    {% if recipe.co2_per_serving < 1.0 %}text-emerald-500
+                    {% elif recipe.co2_per_serving < 1.8 %}text-amber-500
+                    {% else %}text-rose-500{% endif %}">
+                    {{ "%.2f"|format(recipe.co2_per_serving) }}
+                </span>
+                <span class="text-slate-400 text-xl">kg CO₂ per serving</span>
             </div>
-
-            <!-- Recipe Image (right side) -->
-            {% if recipe.og_image_url %}
-            <div class="md:w-72 flex-shrink-0">
-                <img src="{{ recipe.og_image_url }}" alt="{{ recipe.name }}"
-                    class="w-full h-48 md:h-full object-cover rounded-2xl">
+            <div class="flex flex-wrap items-center gap-3">
+                {% if recipe.rating and recipe.rating.label %}
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium
+                    {% if 'Low' in recipe.rating.label %}bg-emerald-100 text-emerald-900
+                    {% elif 'Medium' in recipe.rating.label %}bg-amber-100 text-amber-900
+                    {% else %}bg-rose-100 text-rose-900{% endif %}">
+                    {{ recipe.rating.emoji }} {{ recipe.rating.label }} Footprint
+                </span>
+                <a href="/about-rating" class="text-slate-400 hover:text-emerald-600 transition" title="How are ratings calculated?">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </a>
+                {% endif %}
+                {% if recipe.site_rating %}
+                <span class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-2 rounded-2xl text-sm font-medium">
+                    <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                    </svg>
+                    {{ recipe.site_rating }}
+                </span>
+                {% endif %}
+                <span class="text-slate-400 text-sm ml-1">{{ recipe.servings|int }} servings &middot; {{ "%.2f"|format(recipe.total_co2) }} kg total</span>
+            </div>
+            {% if recipe.source and recipe.source.startswith('http') %}
+            <div class="mt-6 pt-6 border-t border-slate-100">
+                <a href="{{ recipe.source }}" target="_blank"
+                   class="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl text-sm font-semibold transition">
+                    Cook this recipe
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                    </svg>
+                </a>
             </div>
             {% endif %}
         </div>
     </div>
 
-    <!-- Site Rating (if available) -->
-    {% if recipe.site_rating %}
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 mb-8 flex items-center justify-center gap-3">
-        <svg class="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-        </svg>
-        <span class="text-xl font-semibold text-slate-900">{{ recipe.site_rating }}</span>
-        <span class="text-slate-400 text-sm">recipe rating</span>
-    </div>
-    {% endif %}
-
-    <!-- Stats Row - only show nutrition if all ingredients have nutrition data (Danish DB) -->
+    <!-- Nutrition Stats (only if all ingredients have Danish DB nutrition data) -->
     {% set has_complete_nutrition = recipe.ingredients|rejectattr('source_db', 'equalto', 'danish')|list|length == 0 %}
     {% if has_complete_nutrition and recipe.metadata and recipe.metadata.nutrition %}
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 text-center">
             <p class="text-3xl font-semibold text-slate-900">{{ recipe.metadata.nutrition.kcal|int }}</p>
             <p class="text-slate-500 text-sm mt-1">kcal</p>
@@ -109,29 +135,6 @@
         </div>
     </div>
     {% endif %}
-
-    <!-- Ingredients Card -->
-    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-8">
-        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-6">Ingredients</h2>
-        <ul class="space-y-3">
-            {% for ing in recipe.ingredients %}
-            <label class="flex items-center justify-between gap-3 cursor-pointer group">
-                <div class="flex items-center gap-3">
-                    <input type="checkbox" class="w-5 h-5 rounded-lg border-2 border-slate-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0 cursor-pointer">
-                    <span class="text-slate-900 font-medium group-hover:text-slate-700 transition">{{ ing.item }}</span>
-                </div>
-                <span class="text-slate-500 text-sm">{{ ing.grams|int }}g</span>
-            </label>
-            {% endfor %}
-        </ul>
-        {% if recipe.source and recipe.source.startswith('http') %}
-        <div class="mt-6 pt-6 border-t border-slate-100">
-            <a href="{{ recipe.source }}" target="_blank" class="text-emerald-600 hover:text-emerald-700 text-sm font-medium transition">
-                View full recipe on original site →
-            </a>
-        </div>
-        {% endif %}
-    </div>
 
     <!-- CO2 Breakdown (Collapsible) -->
     <details class="bg-white rounded-3xl shadow-sm border border-slate-200 mb-8 group">
@@ -162,14 +165,6 @@
     </div>
 
 </div>
-
-<style>
-    /* Strike-through effect when checkbox is checked */
-    input[type="checkbox"]:checked + span {
-        text-decoration: line-through;
-        color: #94a3b8;
-    }
-</style>
 
 <script>
 function confirmDelete() {

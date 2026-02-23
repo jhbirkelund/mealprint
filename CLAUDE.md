@@ -153,6 +153,11 @@ Import only: pandas, openpyxl
 - Use case: EU Green Claims compliance, B2B documentation
 
 ### Future Ideas
+- **User accounts** - Supabase Auth with OAuth (Google, GitHub). GDPR-compliant: minimal data stored, clear consent, right to deletion. Prerequisite for ratings, saved recipes, and personalisation. No email/password to keep it simple initially.
+- **AI recipe description** - Short 2-3 sentence description of the dish, generated from scraped recipe data (title, ingredients, tags). Displayed on recipe page below the hero. Stored in DB to avoid re-generating.
+- **User recipe ratings** - Internal star/thumbs rating for dish quality (separate from CO2 rating). Requires user accounts. Prompt for a rating after they've clicked through to the recipe site (inferred intent to cook). Aggregate into a Mealprint quality score displayed on the recipe page.
+
+
 - HESTIA database integration (global ingredients)
 - Google Sheets import for bulk URLs
 - Auto-tagging (meal type, nutrition labels)
