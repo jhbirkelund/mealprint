@@ -88,8 +88,9 @@ const availableUnits = {{ units | tojson }};
 const allIngredients = {{ all_ingredients | tojson }};
 let rowCounter = 1000;
 
-// Initialize shared autocomplete with candidates on focus (for suggested matches)
-setupIngredientAutocomplete(allIngredients, { showCandidatesOnFocus: true });
+// Filter Danish names for non-Danish recipes (source URL without .dk = English)
+const isDanishRecipe = {{ 'true' if source and '.dk' in source else 'false' }};
+setupIngredientAutocomplete(allIngredients, { showCandidatesOnFocus: true, filterDanish: !isDanishRecipe });
 
 function addIngredientRow() {
     rowCounter++;

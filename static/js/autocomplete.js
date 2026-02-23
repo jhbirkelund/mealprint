@@ -13,13 +13,27 @@
 function setupIngredientAutocomplete(allIngredients, options = {}) {
     const config = {
         showCandidatesOnFocus: options.showCandidatesOnFocus || false,
+        filterDanish: options.filterDanish || false,
         inputSelector: options.inputSelector || '.ingredient-input',
         dropdownSelector: options.dropdownSelector || '.autocomplete-dropdown'
     };
 
+    // Pre-filter Danish names if this is an English recipe
+    const searchableIngredients = config.filterDanish
+        ? allIngredients.filter(ing => ing.lang !== 'dk')
+        : allIngredients;
+
     // Build lookup map from name to source for candidate display
     const ingredientSourceMap = {};
     allIngredients.forEach(ing => ingredientSourceMap[ing.name] = ing.source);
+
+    function sortBySource(matches) {
+        return matches.sort((a, b) => {
+            if (a.source === 'ClimateDB' && b.source !== 'ClimateDB') return -1;
+            if (a.source !== 'ClimateDB' && b.source === 'ClimateDB') return 1;
+            return 0;
+        });
+    }
 
     // Handle typing in input
     document.addEventListener('input', function(e) {
@@ -38,10 +52,10 @@ function setupIngredientAutocomplete(allIngredients, options = {}) {
 
         // Filter ingredients - show items containing ALL search words
         const searchWords = query.split(/\s+/).filter(w => w.length > 0);
-        const matches = allIngredients.filter(ing => {
+        const matches = sortBySource(searchableIngredients.filter(ing => {
             const nameLower = ing.name.toLowerCase();
             return searchWords.every(word => nameLower.includes(word));
-        }).slice(0, 20);
+        })).slice(0, 20);
 
         if (matches.length === 0) {
             dropdown.classList.add('hidden');
@@ -89,8 +103,16 @@ function setupIngredientAutocomplete(allIngredients, options = {}) {
             input.value = '';
 
             // Show candidates if available
-            const candidates = JSON.parse(input.dataset.candidates || '[]');
+            let candidates = JSON.parse(input.dataset.candidates || '[]');
             if (candidates.length > 0) {
+                // Sort candidate names: ClimateDB first
+                candidates = candidates.sort((a, b) => {
+                    const srcA = ingredientSourceMap[a] || '';
+                    const srcB = ingredientSourceMap[b] || '';
+                    if (srcA === 'ClimateDB' && srcB !== 'ClimateDB') return -1;
+                    if (srcA !== 'ClimateDB' && srcB === 'ClimateDB') return 1;
+                    return 0;
+                });
                 dropdown.innerHTML = candidates.map(name => {
                     const source = ingredientSourceMap[name] || '';
                     return `<div class="autocomplete-item px-3 py-2 hover:bg-emerald-50 cursor-pointer text-sm text-slate-700" data-value="${name}">

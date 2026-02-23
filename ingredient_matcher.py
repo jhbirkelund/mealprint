@@ -84,11 +84,11 @@ def get_ingredients_for_autocomplete(climate_ingredients=None):
 
     for ing in climate_ingredients:
         source_db = ing.get('source', 'unknown')
-        # Add all language variants with their source
-        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+        # Add all language variants with their source and language tag
+        for lang, name in [('en', ing.get('name_en')), ('dk', ing.get('name_dk')), ('fr', ing.get('name_fr'))]:
             if name and name not in seen_names:
                 seen_names.add(name)
-                all_ingredients.append({'name': name, 'source': source_db})
+                all_ingredients.append({'name': name, 'source': source_db, 'lang': lang})
 
     all_ingredients.sort(key=lambda x: x['name'])
     return all_ingredients
