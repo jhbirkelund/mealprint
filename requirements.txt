@@ -5,6 +5,6 @@ recipe-scrapers
 rapidfuzz
 openpyxl
 gunicorn
-setuptools
+setuptools<71
 psycopg2-binary
 mistralai
