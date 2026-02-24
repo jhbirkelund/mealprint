@@ -273,7 +273,8 @@ def summary():
         original_ingredients=original_ingredients,
         ingredients=ingredients_with_matches,
         all_ingredients=ALL_INGREDIENTS_FOR_AUTOCOMPLETE,
-        units=available_units
+        units=available_units,
+        ingredient_weights=CONVERSIONS['ingredients']
     )
 
 @app.route('/calculate', methods=['POST'])

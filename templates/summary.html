@@ -39,14 +39,17 @@
 
                     <div class="flex flex-col md:flex-row md:items-center gap-3">
                         <!-- Amount & Unit -->
-                        <div class="flex gap-2">
+                        <div class="flex items-center gap-2">
                             <input type="number" name="amounts" value="{{ item.amount }}" step="any" required
+                                oninput="updatePieceHint(this.closest('.ingredient-row'))"
                                 class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
-                            <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                            <select name="units" onchange="updatePieceHint(this.closest('.ingredient-row'))"
+                                class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
                                 {% for u in units %}
                                 <option value="{{ u }}" {% if u == item.unit %}selected{% endif %}>{{ u }}</option>
                                 {% endfor %}
                             </select>
+                            <span class="piece-hint text-xs text-slate-400 w-12"></span>
                         </div>
 
                         <!-- Arrow -->
@@ -57,6 +60,7 @@
                             <input type="text" name="selected_matches" autocomplete="off" required
                                 value="{% if item.candidates and item.confident %}{{ item.candidates[0] }}{% endif %}"
                                 data-candidates='{{ item.candidates | tojson if item.candidates else "[]" }}'
+                                oninput="updatePieceHint(this.closest('.ingredient-row'))"
                                 placeholder="Search ingredient..."
                                 class="ingredient-input w-full px-3 py-2 rounded-xl border {% if item.confident %}border-slate-200{% else %}border-amber-300 bg-amber-50{% endif %} focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
                             <div class="autocomplete-dropdown hidden absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"></div>
@@ -86,7 +90,30 @@
 <script>
 const availableUnits = {{ units | tojson }};
 const allIngredients = {{ all_ingredients | tojson }};
+const ingredientWeights = {{ ingredient_weights | tojson }};
 let rowCounter = 1000;
+
+function getPieceGrams(amount, ingredientName) {
+    const name = ingredientName.toLowerCase();
+    for (const [key, weight] of Object.entries(ingredientWeights)) {
+        if (name.includes(key)) return amount * weight;
+    }
+    return amount * 100;
+}
+
+function updatePieceHint(row) {
+    const hint = row.querySelector('.piece-hint');
+    if (!hint) return;
+    const unit = row.querySelector('[name="units"]').value;
+    if (unit !== 'piece') { hint.textContent = ''; return; }
+    const amount = parseFloat(row.querySelector('[name="amounts"]').value) || 1;
+    const ingName = row.querySelector('[name="selected_matches"]').value;
+    hint.textContent = `≈ ${Math.round(getPieceGrams(amount, ingName))}g`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.ingredient-row').forEach(row => updatePieceHint(row));
+});
 
 // Filter Danish names for non-Danish recipes (source URL without .dk = English)
 const isDanishRecipe = {{ 'true' if source and '.dk' in source else 'false' }};
@@ -104,12 +131,15 @@ function addIngredientRow() {
         <p class="text-xs text-slate-400 mb-2">New ingredient (added manually)</p>
         <input type="hidden" name="original_lines" value="(manually added)">
         <div class="flex flex-col md:flex-row md:items-center gap-3">
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
                 <input type="number" name="amounts" value="100" step="any" required
+                    oninput="updatePieceHint(this.closest('.ingredient-row'))"
                     class="w-20 px-3 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700">
-                <select name="units" class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
+                <select name="units" onchange="updatePieceHint(this.closest('.ingredient-row'))"
+                    class="w-20 px-2 py-2 rounded-xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-sm text-slate-700 bg-white">
                     ${unitOptions}
                 </select>
+                <span class="piece-hint text-xs text-slate-400 w-12"></span>
             </div>
             <div class="hidden md:block text-slate-300">→</div>
             <div class="flex-1 relative">

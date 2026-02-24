@@ -71,18 +71,24 @@
 
                         <!-- Amount -->
                         <input type="number" name="amounts" value="{{ ing.amount }}" step="any" required
+                            oninput="updatePieceHint(this.closest('.ingredient-row'))"
                             class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm">
 
                         <!-- Unit -->
-                        <select name="units" class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm bg-white">
+                        <select name="units" onchange="updatePieceHint(this.closest('.ingredient-row'))"
+                            class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm bg-white">
                             {% for u in units %}
                             <option value="{{ u }}" {% if u == ing.unit %}selected{% endif %}>{{ u }}</option>
                             {% endfor %}
                         </select>
 
+                        <!-- Piece hint -->
+                        <span class="piece-hint text-xs text-slate-400 w-12"></span>
+
                         <!-- Ingredient name with autocomplete -->
                         <div class="flex-1 relative">
                             <input type="text" name="selected_matches" value="{{ ing.item }}" required autocomplete="off"
+                                oninput="updatePieceHint(this.closest('.ingredient-row'))"
                                 class="ingredient-input w-full px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"
                                 placeholder="Search ingredient...">
                             <div class="autocomplete-dropdown hidden absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
@@ -230,6 +236,29 @@
 <script>
 const availableUnits = {{ units | tojson }};
 const allIngredients = {{ all_ingredients | tojson }};
+const ingredientWeights = {{ ingredient_weights | tojson }};
+
+function getPieceGrams(amount, ingredientName) {
+    const name = ingredientName.toLowerCase();
+    for (const [key, weight] of Object.entries(ingredientWeights)) {
+        if (name.includes(key)) return amount * weight;
+    }
+    return amount * 100;
+}
+
+function updatePieceHint(row) {
+    const hint = row.querySelector('.piece-hint');
+    if (!hint) return;
+    const unit = row.querySelector('[name="units"]').value;
+    if (unit !== 'piece') { hint.textContent = ''; return; }
+    const amount = parseFloat(row.querySelector('[name="amounts"]').value) || 1;
+    const ingName = row.querySelector('[name="selected_matches"]').value;
+    hint.textContent = `≈ ${Math.round(getPieceGrams(amount, ingName))}g`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.ingredient-row').forEach(row => updatePieceHint(row));
+});
 
 // Initialize shared autocomplete (no candidates on focus for admin review)
 setupIngredientAutocomplete(allIngredients);
@@ -246,10 +275,13 @@ function addIngredientRow() {
             <input type="hidden" name="original_lines" value="(manually added)">
             <input type="hidden" name="matched_by" value="fuzzy">
             <input type="number" name="amounts" value="100" step="any" required
+                oninput="updatePieceHint(this.closest('.ingredient-row'))"
                 class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm">
-            <select name="units" class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm bg-white">
+            <select name="units" onchange="updatePieceHint(this.closest('.ingredient-row'))"
+                class="w-20 px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm bg-white">
                 ${unitOptions}
             </select>
+            <span class="piece-hint text-xs text-slate-400 w-12"></span>
             <div class="flex-1 relative">
                 <input type="text" name="selected_matches" required autocomplete="off"
                     class="ingredient-input w-full px-2 py-1.5 rounded border border-slate-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none text-sm"

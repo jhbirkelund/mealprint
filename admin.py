@@ -21,7 +21,7 @@ from db import (
     get_connection,
     get_ingredient_by_name
 )
-from recipe_manager import calculate_rating
+from recipe_manager import calculate_rating, CONVERSIONS
 from ingredient_matcher import get_ingredients_for_autocomplete
 from mistral_matcher import mistral_match, mistral_match_batch, is_mistral_available
 
@@ -226,7 +226,8 @@ def review_recipe(recipe_id):
     return render_template('admin/review_detail.html',
         recipe=recipe,
         units=units,
-        all_ingredients=all_ingredients
+        all_ingredients=all_ingredients,
+        ingredient_weights=CONVERSIONS['ingredients']
     )
 
 

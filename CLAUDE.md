@@ -13,11 +13,17 @@ Mealprint is a Python/Flask application for calculating the carbon footprint (CO
 **Production**: `mealprint.onrender.com`
 - Gunicorn WSGI server, auto-deploys from `main` branch
 - PostgreSQL on Supabase (free tier)
+- Config in `render.yaml` — start command: `gunicorn manual_app:app --timeout 120 --bind 0.0.0.0:10000`
 
-**Environment Variables**:
+**Environment Variables** (set in Render dashboard):
 - `DATABASE_URL` - Supabase PostgreSQL connection string
 - `MISTRAL_API_KEY` - AI ingredient matching (optional, admin-only)
 - `ADMIN_PASSWORD` - Admin area password (defaults to 'admin' locally)
+- `PYTHON_VERSION` - Set to `3.12.0` (pins Python version, avoids pkg_resources error on 3.13)
+
+**Deployment troubleshooting**:
+- `ModuleNotFoundError: No module named 'pkg_resources'` → Render cached an old venv. Use **"Clear build cache & deploy"** in the Render dashboard.
+- Python version not changing → Check `PYTHON_VERSION` env var in Render dashboard, and clear build cache.
 
 ## Running Locally
 
@@ -147,10 +153,65 @@ Import only: pandas, openpyxl
 - Filters: CO2 rating, tags, language, domain
 - Pagination, "inspiration cards" with thumbnails
 
+### Fix: Replace quantulum3 parser
+- `quantulum3` is unmaintained and breaks on new Python/setuptools versions (currently pinned to `setuptools<71` as workaround)
+- Used in exactly two files (`ingredient_matcher.py`, `manual_app.py`) for one purpose: extract number + unit + surface from ingredient strings
+- Replace with a custom regex parser built against the known unit list in `config/units.json` (~20-30 lines, zero dependencies)
+
+### Fix: Rescrape & AI Re-match Timeouts
+- Rescrape and AI re-match in admin frequently time out — they run synchronously during the HTTP request (scraping + Mistral API calls can take 10-30s)
+- Fix: run them as background jobs (same pattern as bulk import — queue a job, poll for completion)
+- Affects: "Rescrape" and "AI Re-match" buttons in admin review queue and published list
+
 ### Phase 5: Transparency Reports
-- Per-recipe audit trail: ingredient breakdown, data sources, density applied
-- Output: web view, PDF, JSON
-- Use case: EU Green Claims compliance, B2B documentation
+
+**Goal:** Public web report per recipe. Anyone with the link can verify and recreate the full CO2 calculation. Use case: EU Green Claims compliance, B2B documentation.
+
+**URL:** `/recipe/<id>/report` (public, no login required)
+
+**Prerequisite:** Block publishing if any ingredient is unmatched. Admin must resolve all ingredients before a recipe can go live.
+
+**Page structure:**
+
+1. **Header**
+   - Recipe name + link to recipe page
+   - Total CO2 (kg), servings, CO2 per serving
+   - Report generated date
+
+2. **Data Sources**
+   - Static section listing the databases used in this report, with:
+     - ClimateDB: description, link to climatedb.dk, date last imported into Mealprint
+     - Agribalyse: description, link to agribalyse.fr, date last imported into Mealprint
+   - Note: dates stored in a `db_metadata` table (key/value: `climatedb_imported`, `agribalyse_imported`)
+
+3. **Ingredient Audit Table**
+   One row per ingredient. Columns:
+   - **Original line** — raw text from recipe (e.g. "1 cup flour")
+   - **Parsed amount + unit** — what the parser extracted (e.g. `1 cup`)
+   - **Weight conversion** — how it became grams:
+     - If density applied: `1 cup → 240 ml → 127g (density: 0.53 g/ml, category: flour)`
+     - If direct weight unit: `250g` (no conversion needed)
+     - If unit weight (e.g. egg): `2 eggs → 120g (unit weight: 60g/egg)`
+   - **Matched ingredient** — name as it appears in the source DB
+   - **Source DB** — ClimateDB or Agribalyse
+   - **CO₂/kg** — the value pulled from the DB
+   - **Calculated CO₂** — grams ÷ 1000 × CO₂/kg = result (shown as formula + result)
+
+4. **Totals**
+   - Sum of all ingredient CO₂ values = total CO₂
+   - Total ÷ servings = CO₂ per serving
+   - Matches the values shown on the recipe page
+
+5. **Methodology note**
+   - Brief explanation of the rating system, with link to `/about-rating`
+   - Link to density white paper `/resources/density`
+
+**Data already available in DB:**
+- `recipe_ingredients`: original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied ✓
+- `recipes`: total_co2, servings, co2_per_serving ✓
+- Missing: `co2_per_kg` per ingredient (need to join with climate_ingredients at report render time)
+- Missing: density details per ingredient (category, density value used) — need to store or re-derive
+- Missing: `db_metadata` table for import dates — needs creating
 
 ### Future Ideas
 - **User accounts** - Supabase Auth with OAuth (Google, GitHub). GDPR-compliant: minimal data stored, clear consent, right to deletion. Prerequisite for ratings, saved recipes, and personalisation. No email/password to keep it simple initially.
