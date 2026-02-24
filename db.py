@@ -185,6 +185,121 @@ def init_db():
     cur.execute('CREATE INDEX IF NOT EXISTS idx_import_items_job ON import_items(job_id)')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_import_items_status ON import_items(status)')
 
+    # Create security_tracker table
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS security_tracker (
+            id SERIAL PRIMARY KEY,
+            category TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            status TEXT DEFAULT 'open',
+            notes TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+
+    # Seed initial items if table is empty
+    cur.execute('SELECT COUNT(*) FROM security_tracker')
+    count = cur.fetchone()[0]
+    if count == 0:
+        items = [
+            # ── Security: Critical ──────────────────────────────────────────
+            ('security', 'critical', 'No auth on recipe delete',
+             '/delete/<id> is a plain GET route with no authentication. Any visitor can delete any recipe.',
+             'open', None),
+            ('security', 'critical', 'No auth on recipe edit/update',
+             '/edit/<id> and /update/<id> have no authentication. Anyone can modify any recipe.',
+             'open', None),
+            ('security', 'critical', 'No CSRF protection on any form',
+             'No CSRF tokens on any POST form. Attacker can trick logged-in users into triggering delete, edit, or publish actions.',
+             'open', None),
+            ('security', 'critical', 'Weak admin authentication',
+             'Admin password is plaintext comparison with default value "admin". No rate limiting, no brute-force protection.',
+             'open', None),
+            # ── Security: High ──────────────────────────────────────────────
+            ('security', 'high', 'SECRET_KEY defaults to known dev value',
+             'If SECRET_KEY env var is not set in Render, sessions can be forged. Default key is publicly documented.',
+             'open', None),
+            ('security', 'high', 'XSS via recipe source URL in href',
+             'recipe.source is used directly in <a href="{{ recipe.source }}"> with no validation. javascript: URLs execute on click.',
+             'open', None),
+            ('security', 'high', 'XSS via og_image_url in img src',
+             'og_image_url passed through form and stored without validation. Used as <img src="..."> — allows tracking pixels and bad URLs.',
+             'open', None),
+            ('security', 'high', 'XSS via recipe tags',
+             'Tags are stored and rendered without sanitization. Attacker could inject HTML via a tag.',
+             'open', None),
+            ('security', 'high', 'SSRF via /scrape route',
+             '/scrape accepts any URL including internal addresses (localhost, 127.0.0.1, cloud metadata endpoints). No domain validation.',
+             'open', None),
+            ('security', 'high', 'Stack traces exposed to users',
+             'Error handlers return str(e) directly to the client. Can leak DB structure, file paths, or key names.',
+             'open', None),
+            ('security', 'high', 'No rate limiting anywhere',
+             'No rate limiting on /scrape, /calculate, /admin/login, or any other route. Open to spam, brute force, and DoS.',
+             'open', None),
+            ('security', 'high', 'FLASK_DEBUG defaults to True',
+             'manual_app.py defaults FLASK_DEBUG to True if env var not set. Exposes interactive debugger in production.',
+             'open', None),
+            # ── Security: Medium ─────────────────────────────────────────────
+            ('security', 'medium', 'No input validation on recipe fields',
+             'Recipe name, servings, amounts, and tags have no length limits, range checks, or character validation.',
+             'open', None),
+            ('security', 'medium', 'Admin session never expires',
+             'Admin session has no idle timeout and no HttpOnly/Secure/SameSite cookie flags.',
+             'open', None),
+            ('security', 'medium', 'No audit logging',
+             'No record of who created, edited, deleted, published, or rejected recipes. Cannot investigate incidents.',
+             'open', None),
+            ('security', 'medium', 'DB connection leaks on exceptions',
+             'db.py does not use try/finally or context managers for connections. Exceptions leave connections open.',
+             'open', None),
+            # ── Security: Low ────────────────────────────────────────────────
+            ('security', 'low', 'Missing security headers',
+             'No X-Frame-Options, X-Content-Type-Options, Strict-Transport-Security, or Content-Security-Policy headers.',
+             'open', None),
+            ('security', 'low', 'Quantulum3 parser unmaintained',
+             'quantulum3 is unmaintained and known to hang on edge-case regex inputs. Roadmap item to replace with custom parser.',
+             'open', None),
+            # ── Compliance: GDPR ─────────────────────────────────────────────
+            ('compliance', 'high', 'No privacy policy',
+             'No privacy policy page. Required under GDPR if collecting or processing any personal data (e.g. IP logs, future user accounts).',
+             'open', None),
+            ('compliance', 'high', 'No cookie consent banner',
+             'Session cookies set without user consent or disclosure. Required under ePrivacy Directive (EU Cookie Law).',
+             'open', None),
+            ('compliance', 'medium', 'No data retention policy',
+             'No defined policy for how long user-submitted recipes are stored. Required for GDPR compliance.',
+             'open', None),
+            ('compliance', 'medium', 'No data processing agreement with Supabase',
+             'Supabase processes data on behalf of Mealprint. A DPA should be in place before handling personal data.',
+             'open', None),
+            ('compliance', 'medium', 'No right to deletion mechanism',
+             'If user accounts are added, users must be able to request deletion of their data. No mechanism exists yet.',
+             'open', None),
+            ('compliance', 'low', 'No terms of service',
+             'No ToS defining acceptable use, liability, or content ownership.',
+             'open', None),
+            ('compliance', 'low', 'No accessibility statement (WCAG)',
+             'No WCAG 2.1 compliance review or accessibility statement. Required for EU public sector, good practice elsewhere.',
+             'open', None),
+            # ── Compliance: EU Green Claims ────────────────────────────────────
+            ('compliance', 'medium', 'EU Green Claims: methodology substantiation',
+             'EU Green Claims Directive requires documented, verifiable methodology for environmental claims. Transparency reports are a start — need third-party review.',
+             'open', None),
+            ('compliance', 'medium', 'EU Green Claims: data source currency',
+             'CO2 data must be kept up to date. Need a process for reviewing and updating ClimateDB and Agribalyse imports.',
+             'open', None),
+            ('compliance', 'low', 'EU Green Claims: third-party verification',
+             'Claims may require independent verification to meet the full requirements of the EU Green Claims Directive.',
+             'open', None),
+        ]
+        cur.executemany('''
+            INSERT INTO security_tracker (category, severity, title, description, status, notes)
+            VALUES (%s, %s, %s, %s, %s, %s)
+        ''', items)
+
     conn.commit()
     cur.close()
     conn.close()
@@ -807,6 +922,43 @@ def get_pending_import_items(job_id, limit=10):
     conn.close()
 
     return items
+
+
+def get_security_items():
+    """Get all security tracker items grouped by category and severity."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('''
+        SELECT * FROM security_tracker
+        ORDER BY
+            category,
+            CASE severity
+                WHEN 'critical' THEN 1
+                WHEN 'high'     THEN 2
+                WHEN 'medium'   THEN 3
+                WHEN 'low'      THEN 4
+                ELSE 5
+            END,
+            id
+    ''')
+    items = [dict(row) for row in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return items
+
+
+def update_security_item(item_id, status, notes=None):
+    """Update the status and optional notes of a security tracker item."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        UPDATE security_tracker
+        SET status = %s, notes = %s, updated_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+    ''', (status, notes, item_id))
+    conn.commit()
+    cur.close()
+    conn.close()
 
 
 def update_import_item(item_id, status, recipe_id=None, error_message=None):

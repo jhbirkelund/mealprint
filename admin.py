@@ -19,7 +19,9 @@ from db import (
     get_all_recipes,
     get_recipe_by_id,
     get_connection,
-    get_ingredient_by_name
+    get_ingredient_by_name,
+    get_security_items,
+    update_security_item
 )
 from recipe_manager import calculate_rating, CONVERSIONS
 from ingredient_matcher import get_ingredients_for_autocomplete
@@ -573,5 +575,43 @@ def ai_rematch_recipe(recipe_id):
 
     except Exception as e:
         flash(f'AI re-match failed: {str(e)}', 'error')
+
+
+@admin_bp.route('/security')
+@admin_required
+def security_tracker():
+    """Security and compliance risk tracker."""
+    items = get_security_items()
+
+    # Build summary counts
+    open_by_severity = {}
+    total_open = 0
+    total_fixed = 0
+    for item in items:
+        if item['status'] in ('open', 'in_progress'):
+            sev = item['severity']
+            open_by_severity[sev] = open_by_severity.get(sev, 0) + 1
+            total_open += 1
+        elif item['status'] == 'fixed':
+            total_fixed += 1
+
+    return render_template('admin/security_tracker.html',
+        items=items,
+        open_by_severity=open_by_severity,
+        total_open=total_open,
+        total_fixed=total_fixed
+    )
+
+
+@admin_bp.route('/security/<int:item_id>/update', methods=['POST'])
+@admin_required
+def update_security_item_route(item_id):
+    """Update status and notes for a security tracker item."""
+    status = request.form.get('status', 'open')
+    notes = request.form.get('notes', '').strip() or None
+    if status not in ('open', 'in_progress', 'fixed', 'accepted'):
+        status = 'open'
+    update_security_item(item_id, status, notes)
+    return redirect(url_for('admin.security_tracker') + f'#{item_id}')
 
     return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
