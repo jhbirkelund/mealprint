@@ -217,6 +217,16 @@
 
         "fish sauce": "Soya sauce",
         "nam pla": "Soya sauce",
-        "nuoc mam": "Soya sauce"
+        "nuoc mam": "Soya sauce",
+        "soy sauce": "Soya sauce",
+        "soya sauce": "Soya sauce",
+        "tamari": "Soya sauce",
+
+        "sriracha": "Chili sauce",
+        "sriracha sauce": "Chili sauce",
+
+        "bouillon": "Bouillon, vegetable",
+        "broth": "Bouillon, vegetable",
+        "stock": "Bouillon, vegetable"
     }
 }

@@ -457,7 +457,8 @@ def edit(recipe_id):
         recipe=r,
         all_ingredients=ALL_INGREDIENTS_FOR_AUTOCOMPLETE,
         units=available_units,
-        publish=publish
+        publish=publish,
+        ingredient_weights=CONVERSIONS['ingredients']
     )
 
 @app.route('/update/<recipe_id>', methods=['POST'])

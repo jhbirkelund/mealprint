@@ -67,6 +67,19 @@
         "water": {
             "density": 1.0,
             "keywords": ["water", "broth", "stock", "bouillon", "juice"]
+        },
+        "breadcrumbs": {
+            "density": 0.45,
+            "keywords": ["breadcrumb", "bread-crumb", "panko"]
+        },
+        "ground_spices": {
+            "density": 0.50,
+            "keywords": ["cumin", "paprika", "cinnamon", "turmeric", "cayenne", "curry", "coriander, seed", "cardamom", "nutmeg", "allspice", "cloves", "pepper, black", "pepper, white"],
+            "exclude": ["coriander, fresh", "curry paste"]
+        },
+        "dried_herbs": {
+            "density": 0.20,
+            "keywords": ["oregano", "thyme", "marjoram", "bay, leaves", "basil, dried", "parsley, dried", "rosemary, dried", "sage, dried", "dill, dried", "tarragon, dried"]
         }
     },
     "default_density": 1.0

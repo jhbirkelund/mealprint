@@ -12,7 +12,7 @@
         <a href="{{ recipe.source }}" target="_blank" class="block">
         {% endif %}
             <img src="{{ recipe.og_image_url }}" alt="{{ recipe.name }}"
-                class="w-full h-64 md:h-96 object-cover">
+                class="w-full">
             <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
         {% if recipe.source and recipe.source.startswith('http') %}
         </a>
@@ -75,20 +75,22 @@
                 </span>
                 <span class="text-slate-400 text-xl">kg CO₂ per serving</span>
             </div>
-            <div class="flex flex-wrap items-center gap-3">
-                {% if recipe.rating and recipe.rating.label %}
-                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-2xl text-sm font-medium
+            {% if recipe.rating and recipe.rating.label %}
+            <div class="flex items-center gap-3 mb-4">
+                <span class="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl text-base font-semibold
                     {% if 'Low' in recipe.rating.label %}bg-emerald-100 text-emerald-900
                     {% elif 'Medium' in recipe.rating.label %}bg-amber-100 text-amber-900
                     {% else %}bg-rose-100 text-rose-900{% endif %}">
-                    {{ recipe.rating.emoji }} {{ recipe.rating.label }} Footprint
+                    <span class="text-xl">{{ recipe.rating.emoji }}</span> {{ recipe.rating.label }} Footprint
                 </span>
                 <a href="/about-rating" class="text-slate-400 hover:text-emerald-600 transition" title="How are ratings calculated?">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
                 </a>
-                {% endif %}
+            </div>
+            {% endif %}
+            <div class="flex flex-wrap items-center gap-3">
                 {% if recipe.site_rating %}
                 <span class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 px-3 py-2 rounded-2xl text-sm font-medium">
                     <svg class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
@@ -97,7 +99,7 @@
                     {{ recipe.site_rating }}
                 </span>
                 {% endif %}
-                <span class="text-slate-400 text-sm ml-1">{{ recipe.servings|int }} servings &middot; {{ "%.2f"|format(recipe.total_co2) }} kg total</span>
+                <span class="text-slate-400 text-sm">{{ recipe.servings|int }} servings &middot; {{ "%.2f"|format(recipe.total_co2) }} kg total</span>
             </div>
             {% if recipe.source and recipe.source.startswith('http') %}
             <div class="mt-6 pt-6 border-t border-slate-100">
