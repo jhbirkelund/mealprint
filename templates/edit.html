@@ -152,28 +152,49 @@
 const availableUnits = {{ units | tojson }};
 const allIngredients = {{ all_ingredients | tojson }};
 const ingredientWeights = {{ ingredient_weights | tojson }};
+const unitConversions = {{ unit_conversions | tojson }};
+const densities = {{ densities | tojson }};
+const VOLUME_UNITS = new Set(['ml','dl','l','tsp','tbsp','cup','fl oz','quart','drop','pinch','dash','sprinkling']);
 let rowCounter = 1000;
 
-function getPieceGrams(amount, ingredientName) {
-    const name = ingredientName.toLowerCase();
-    for (const [key, weight] of Object.entries(ingredientWeights)) {
-        if (name.includes(key)) return amount * weight;
+function getDensity(ingName) {
+    const name = ingName.toLowerCase();
+    for (const [, config] of Object.entries(densities.categories)) {
+        if (config.exclude && config.exclude.some(ex => name.includes(ex))) continue;
+        if (config.keywords.some(kw => name.includes(kw))) return config.density;
     }
-    return amount * 100; // default piece weight
+    return densities.default_density;
 }
 
 function updatePieceHint(row) {
     const hint = row.querySelector('.piece-hint');
     if (!hint) return;
     const unit = row.querySelector('[name="units"]').value;
-    if (unit !== 'piece') {
-        hint.textContent = '';
+    const amount = parseFloat(row.querySelector('[name="amounts"]').value) || 1;
+    const ingInput = row.querySelector('[name="selected_matches"]');
+    const ingName = ingInput ? ingInput.value.toLowerCase() : '';
+
+    if (!unit || unit === 'g') { hint.textContent = ''; return; }
+
+    if (unit === 'piece' || unit === 'can') {
+        let weightPerUnit = unit === 'can' ? 400 : 100;
+        for (const [key, weight] of Object.entries(ingredientWeights)) {
+            if (ingName.includes(key)) { weightPerUnit = weight; break; }
+        }
+        hint.textContent = `≈ ${Math.round(amount * weightPerUnit)}g`;
         return;
     }
-    const amount = parseFloat(row.querySelector('[name="amounts"]').value) || 1;
-    const ingName = row.querySelector('[name="selected_matches"]').value;
-    const grams = getPieceGrams(amount, ingName);
-    hint.textContent = `≈ ${Math.round(grams)}g`;
+
+    const factor = unitConversions[unit];
+    if (!factor) { hint.textContent = ''; return; }
+
+    if (VOLUME_UNITS.has(unit)) {
+        const ml = amount * factor;
+        const grams = Math.round(ml * getDensity(ingName));
+        hint.textContent = `≈ ${grams}g`;
+    } else {
+        hint.textContent = `= ${Math.round(amount * factor)}g`;
+    }
 }
 
 // Initialize hints for all existing rows on page load

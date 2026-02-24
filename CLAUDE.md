@@ -213,17 +213,72 @@ Import only: pandas, openpyxl
 - Missing: density details per ingredient (category, density value used) — need to store or re-derive
 - Missing: `db_metadata` table for import dates — needs creating
 
-### Future Ideas
-- **User accounts** - Supabase Auth with OAuth (Google, GitHub). GDPR-compliant: minimal data stored, clear consent, right to deletion. Prerequisite for ratings, saved recipes, and personalisation. No email/password to keep it simple initially.
+### Phase 6: Security Hardening *(prerequisite for external users)*
+
+Must be done before sharing the URL publicly. Track progress in Admin → Security tracker.
+
+**Critical blockers:**
+- Add passphrase protection to edit/delete routes (temporary until user accounts exist)
+- CSRF tokens on all POST forms (add `flask-wtf`)
+- Sanitize `source` URL and `og_image_url` before saving — reject `javascript:` schemes
+- Fix error handling — return generic messages to users, log details server-side only
+- Confirm `FLASK_DEBUG=False` and `SECRET_KEY` set as Render env vars
+
+**High priority:**
+- Rate limiting on `/scrape` and `/admin/login` (add `flask-limiter`)
+- Input validation: max lengths on name/tags, positive-only on servings/amounts
+- Security headers middleware (X-Frame-Options, X-Content-Type-Options, HSTS)
+- Admin session: add idle timeout + HttpOnly/Secure/SameSite cookie flags
+
+### Phase 7: Compliance & Legal *(prerequisite for external users)*
+
+**Required before launch:**
+- Privacy policy page (`/privacy`) — what data is collected, why, how long kept, who processes it (Supabase)
+- Cookie disclosure — session cookies only, no tracking. Add minimal notice to footer or banner
+- Terms of service page (`/terms`) — acceptable use, no liability for CO2 accuracy, content ownership
+
+**Needed before user accounts:**
+- Data retention policy (defined in privacy policy)
+- Data Processing Agreement with Supabase (their standard DPA, sign via Supabase dashboard)
+- Right to deletion mechanism
+
+**EU Green Claims (ongoing):**
+- Keep transparency reports up to date — they serve as substantiation documents
+- Establish a process for updating climate data sources when new versions release
+
+### Phase 8: Pre-Launch Polish
+
+**Technical debt to clear:**
+- Replace `quantulum3` with custom regex parser — removes fragile dependency, fixes potential parse hangs (see Fix note above)
+- Fix rescrape & AI re-match timeouts — move to background jobs (see Fix note above)
+
+**Content & UX:**
+- Build up recipe database to ~200+ quality published recipes across categories
+- Add OG meta tags per recipe page (title, description, image) for link previews when shared
+- Review mobile UX end-to-end — the primary use case is looking up a recipe on your phone
+- 404 and 500 error pages that match the site design
+
+**Monitoring:**
+- Add basic error monitoring (Sentry free tier) so crashes surface without users reporting them
+- Add Render health check endpoint (`/health` returning 200 OK)
+
+### Phase 9: Soft Launch
+
+- Internal go/no-go checklist: all Critical and High items in security tracker marked Fixed or Accepted
+- Share with a small trusted group first (friends, sustainable food community)
+- Set up a feedback channel (simple form or email)
+- Monitor Render logs and Sentry for the first 48 hours
+- Iterate on any blocking issues before broader promotion
+
+### Future Ideas (Post-Launch)
+- **User accounts** - Supabase Auth with OAuth (Google, GitHub). GDPR-compliant: minimal data stored, clear consent, right to deletion. Prerequisite for ratings, saved recipes, and personalisation. No email/password to keep it simple initially. Replaces passphrase edit/delete protection from Phase 6.
 - **AI recipe description** - Short 2-3 sentence description of the dish, generated from scraped recipe data (title, ingredients, tags). Displayed on recipe page below the hero. Stored in DB to avoid re-generating.
 - **User recipe ratings** - Internal star/thumbs rating for dish quality (separate from CO2 rating). Requires user accounts. Prompt for a rating after they've clicked through to the recipe site (inferred intent to cook). Aggregate into a Mealprint quality score displayed on the recipe page.
-
-
-- HESTIA database integration (global ingredients)
-- Google Sheets import for bulk URLs
-- Auto-tagging (meal type, nutrition labels)
-- Percentile-based ratings ("low for a dessert")
-- Danish language UI
+- **HESTIA database integration** (global ingredients)
+- **Google Sheets import** for bulk URLs
+- **Auto-tagging** (meal type, nutrition labels)
+- **Percentile-based ratings** ("low for a dessert")
+- **Danish language UI**
 
 ## Working Guidelines
 

@@ -2,7 +2,7 @@ from flask import Flask, request, render_template, redirect
 import json
 import os
 from quantulum3 import parser
-from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, calculate_rating, get_density_category
+from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, DENSITIES, get_weight_in_grams, calculate_rating, get_density_category
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
 from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name, get_all_climate_ingredients
@@ -228,14 +228,27 @@ def scrape():
         except:
             pass
 
-        return render_template('home.html',
+        # Process ingredients and go straight to review page
+        ingredients_with_matches = get_processed_ingredients(ingredients)
+        for item in ingredients_with_matches:
+            raw_unit = item['unit'].lower().strip() if item['unit'] else ""
+            item['unit'] = UNIT_MAP.get(raw_unit, raw_unit)
+
+        available_units = list(CONVERSIONS['units'].keys())
+
+        return render_template('summary.html',
             recipe_name=recipe_name,
             servings=servings,
-            ingredients=ingredients,
             source=url,
             og_image_url=og_image_url,
             site_rating=site_rating,
-            original_ingredients=original_ingredients
+            original_ingredients=original_ingredients,
+            ingredients=ingredients_with_matches,
+            all_ingredients=ALL_INGREDIENTS_FOR_AUTOCOMPLETE,
+            units=available_units,
+            ingredient_weights=CONVERSIONS['ingredients'],
+            unit_conversions=CONVERSIONS['conversions'],
+            densities=DENSITIES
         )
     except Exception as e:
         return render_template('home.html', error=str(e))

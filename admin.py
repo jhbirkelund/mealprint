@@ -23,7 +23,7 @@ from db import (
     get_security_items,
     update_security_item
 )
-from recipe_manager import calculate_rating, CONVERSIONS
+from recipe_manager import calculate_rating, CONVERSIONS, DENSITIES
 from ingredient_matcher import get_ingredients_for_autocomplete
 from mistral_matcher import mistral_match, mistral_match_batch, is_mistral_available
 
@@ -229,7 +229,9 @@ def review_recipe(recipe_id):
         recipe=recipe,
         units=units,
         all_ingredients=all_ingredients,
-        ingredient_weights=CONVERSIONS['ingredients']
+        ingredient_weights=CONVERSIONS['ingredients'],
+        unit_conversions=CONVERSIONS['conversions'],
+        densities=DENSITIES
     )
 
 
