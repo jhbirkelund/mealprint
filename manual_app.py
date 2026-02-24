@@ -247,7 +247,7 @@ def scrape():
             all_ingredients=ALL_INGREDIENTS_FOR_AUTOCOMPLETE,
             units=available_units,
             ingredient_weights=CONVERSIONS['ingredients'],
-            unit_conversions=CONVERSIONS['conversions'],
+            unit_conversions=CONVERSIONS['units'],
             densities=DENSITIES
         )
     except Exception as e:

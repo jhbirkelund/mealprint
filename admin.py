@@ -230,7 +230,7 @@ def review_recipe(recipe_id):
         units=units,
         all_ingredients=all_ingredients,
         ingredient_weights=CONVERSIONS['ingredients'],
-        unit_conversions=CONVERSIONS['conversions'],
+        unit_conversions=CONVERSIONS['units'],
         densities=DENSITIES
     )
 
