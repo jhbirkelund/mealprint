@@ -1,4 +1,5 @@
-from flask import Flask, request, render_template, redirect
+from flask import Flask, request, render_template, redirect, session, url_for
+from functools import wraps
 import json
 import os
 from quantulum3 import parser
@@ -11,6 +12,25 @@ from admin import admin_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+EDIT_PASSPHRASE = os.environ.get('EDIT_PASSPHRASE', 'edit-secret')
+
+def require_edit_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get('edit_authenticated'):
+            return redirect(url_for('edit_auth', next=request.url))
+        return f(*args, **kwargs)
+    return decorated
+
+@app.route('/auth/edit', methods=['GET', 'POST'])
+def edit_auth():
+    if request.method == 'POST':
+        if request.form.get('passphrase') == EDIT_PASSPHRASE:
+            session['edit_authenticated'] = True
+            next_url = request.form.get('next') or url_for('explore')
+            return redirect(next_url)
+        return render_template('edit_auth.html', error='Incorrect passphrase', next=request.args.get('next', ''))
+    return render_template('edit_auth.html', next=request.args.get('next', ''))
 
 # Register admin blueprint
 app.register_blueprint(admin_bp)
@@ -455,6 +475,7 @@ def recipe_report(recipe_id):
     return render_template('report.html', recipe=r, report_date=report_date)
 
 @app.route('/edit/<recipe_id>')
+@require_edit_auth
 def edit(recipe_id):
     # Get recipe from database
     r = get_recipe_by_id(recipe_id)
@@ -476,6 +497,7 @@ def edit(recipe_id):
     )
 
 @app.route('/update/<recipe_id>', methods=['POST'])
+@require_edit_auth
 def update(recipe_id):
     # Get form data
     recipe_name = request.form.get('recipe_name')
@@ -576,6 +598,7 @@ def update(recipe_id):
     return redirect(f'/recipe/{recipe_id}')
 
 @app.route('/delete/<recipe_id>')
+@require_edit_auth
 def delete(recipe_id):
     # Delete from database
     delete_recipe_from_db(recipe_id)

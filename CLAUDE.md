@@ -258,6 +258,14 @@ Must be done before sharing the URL publicly. Track progress in Admin → Securi
 - Review mobile UX end-to-end — the primary use case is looking up a recipe on your phone
 - 404 and 500 error pages that match the site design
 
+**Recipe Verification Tool:**
+- Terminal script (`verify_recipes.py`) — picks 10 random `unverified` published recipes, fetches each original URL, uses Claude (Anthropic API) to compare against stored data
+- Terminal output: summary only — "Checked 10 — 7 verified, 3 flagged for review"
+- DB: add `verification_status` column to `recipes` (values: `unverified` / `under_review` / `verified`, default `unverified`)
+- Admin: `/admin/review` list filtered to `under_review` recipes — admin manually checks, fixes, and marks as `verified`
+- New dependency: `anthropic` Python package + `ANTHROPIC_API_KEY` env var
+- Long-term path: shifts human review from all recipes → flagged-only
+
 **Monitoring:**
 - Add basic error monitoring (Sentry free tier) so crashes surface without users reporting them
 - Add Render health check endpoint (`/health` returning 200 OK)
