@@ -10,6 +10,7 @@ Password-protected admin interface for:
 import os
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from extensions import limiter
 import json
 from db import (
     get_all_import_jobs,
@@ -44,6 +45,7 @@ def admin_required(f):
 
 
 @admin_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def login():
     """Admin login page."""
     if request.method == 'POST':

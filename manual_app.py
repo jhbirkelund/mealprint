@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, redirect, session, url_for
 from flask_wtf.csrf import CSRFProtect
 from functools import wraps
+from extensions import limiter
 import json
 import os
 from quantulum3 import parser
@@ -13,8 +14,19 @@ from admin import admin_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour idle timeout
 CSRFProtect(app)
+limiter.init_app(app)
 EDIT_PASSPHRASE = os.environ.get('EDIT_PASSPHRASE', 'edit-secret')
+
+def sanitize_url(url):
+    """Allow only http/https URLs. Returns empty string for anything else."""
+    if url and url.strip().lower().startswith(('http://', 'https://')):
+        return url.strip()
+    return ''
 
 def require_edit_auth(f):
     @wraps(f)
@@ -33,6 +45,13 @@ def edit_auth():
             return redirect(next_url)
         return render_template('edit_auth.html', error='Incorrect passphrase', next=request.args.get('next', ''))
     return render_template('edit_auth.html', next=request.args.get('next', ''))
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    return response
 
 # Register admin blueprint
 app.register_blueprint(admin_bp)
@@ -194,6 +213,7 @@ def new_recipe():
     return render_template('home.html')
 
 @app.route('/scrape', methods=['POST'])
+@limiter.limit("10 per minute")
 def scrape():
     url = request.form.get('recipe_url')
     try:
@@ -223,7 +243,7 @@ def scrape():
                         site_rating = str(rating_val)
                 else:
                     site_rating = str(ratings)
-        except:
+        except Exception:
             pass
 
         # Extract og:image from the page
@@ -247,7 +267,7 @@ def scrape():
                 parser = OGImageParser()
                 parser.feed(html)
                 og_image_url = parser.og_image
-        except:
+        except Exception:
             pass
 
         # Process ingredients and go straight to review page
@@ -280,8 +300,8 @@ def summary():
     recipe_name = request.form.get('recipe_name')
     servings = request.form.get('servings')
     raw_ingredients = request.form.get('ingredients')
-    source = request.form.get('source', '')
-    og_image_url = request.form.get('og_image_url', '')
+    source = sanitize_url(request.form.get('source', ''))
+    og_image_url = sanitize_url(request.form.get('og_image_url', ''))
     site_rating = request.form.get('site_rating', '')
     original_ingredients = request.form.get('original_ingredients', '')
 
@@ -316,8 +336,8 @@ def summary():
 def calculate():
     # Get lists of all submitted data
     recipe_name = request.form.get('recipe_name')
-    source = request.form.get('source', '')
-    og_image_url = request.form.get('og_image_url', '')
+    source = sanitize_url(request.form.get('source', ''))
+    og_image_url = sanitize_url(request.form.get('og_image_url', ''))
     site_rating = request.form.get('site_rating', '')
     original_ingredients = request.form.get('original_ingredients', '')
     amounts = request.form.getlist('amounts')
@@ -405,9 +425,14 @@ def calculate():
 
 @app.route('/save/', methods=['POST'])
 def save():
-    recipe_name = request.form.get('recipe_name')
+    recipe_name = request.form.get('recipe_name', '')
     servings = float(request.form.get('servings', 1))
     total_co2 = float(request.form.get('total_co2', 0))
+
+    if not recipe_name or len(recipe_name) > 200:
+        return "Invalid recipe name.", 400
+    if servings <= 0:
+        return "Servings must be a positive number.", 400
 
     ingredients_json = request.form.get('detailed_ingredients')
     detailed_ingredients = json.loads(ingredients_json)
@@ -418,10 +443,11 @@ def save():
     # Parse comma-separated tags into a list
     tags_raw = request.form.get('tags', '')
     tags = [tag.strip() for tag in tags_raw.split(',') if tag.strip()]
+    tags = [t[:50] for t in tags[:20]]  # max 20 tags, each max 50 chars
 
     # Get source, og_image_url, site_rating, and original ingredients
-    source = request.form.get('source', '')
-    og_image_url = request.form.get('og_image_url', '')
+    source = sanitize_url(request.form.get('source', ''))
+    og_image_url = sanitize_url(request.form.get('og_image_url', ''))
     site_rating = request.form.get('site_rating', '')
     original_ingredients = request.form.get('original_ingredients', '')
 
@@ -504,8 +530,14 @@ def edit(recipe_id):
 @require_edit_auth
 def update(recipe_id):
     # Get form data
-    recipe_name = request.form.get('recipe_name')
+    recipe_name = request.form.get('recipe_name', '')
     servings = float(request.form.get('servings', 1))
+
+    if not recipe_name or len(recipe_name) > 200:
+        return "Invalid recipe name.", 400
+    if servings <= 0:
+        return "Servings must be a positive number.", 400
+
     amounts = request.form.getlist('amounts')
     units = request.form.getlist('units')
     selected_matches = request.form.getlist('selected_matches')
@@ -516,8 +548,8 @@ def update(recipe_id):
     tags = [tag.strip() for tag in tags_raw.split(',') if tag.strip()]
 
     # Get source, og_image_url, site_rating, and original ingredients
-    source = request.form.get('source', '')
-    og_image_url = request.form.get('og_image_url', '')
+    source = sanitize_url(request.form.get('source', ''))
+    og_image_url = sanitize_url(request.form.get('og_image_url', ''))
     site_rating = request.form.get('site_rating', '')
     original_ingredients = request.form.get('original_ingredients', '')
 
@@ -531,6 +563,8 @@ def update(recipe_id):
 
     for i in range(len(selected_matches)):
         amt = float(amounts[i])
+        if amt <= 0:
+            return "Ingredient amounts must be positive.", 400
         unit = units[i]
         match_name = selected_matches[i]
 
@@ -622,7 +656,16 @@ def resources():
 def resources_density():
     return render_template('density.html')
 
+@app.errorhandler(500)
+def internal_error(e):
+    app.logger.exception("500 error: %s", e)
+    return render_template('error.html', code=500, message="Something went wrong on our end. Please try again."), 500
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('error.html', code=404, message="Page not found."), 404
+
 # This MUST be at the very bottom of the file
 if __name__ == '__main__':
-    debug_mode = os.environ.get('FLASK_DEBUG', 'True').lower() == 'true'
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(debug=debug_mode, port=8080)
