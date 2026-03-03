@@ -11,6 +11,7 @@
 </div>
 
 <form method="POST" action="{{ url_for('admin.save_recipe', recipe_id=recipe.id) }}" id="review-form">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
     <!-- Main Content -->
     <div class="lg:col-span-2 space-y-6">
@@ -223,13 +224,19 @@
 </form>
 
 <!-- Hidden form for rejection -->
-<form id="reject-form" method="POST" action="{{ url_for('admin.reject_recipe', recipe_id=recipe.id) }}"></form>
+<form id="reject-form" method="POST" action="{{ url_for('admin.reject_recipe', recipe_id=recipe.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
 
 <!-- Hidden form for re-scrape -->
-<form id="rescrape-form" method="POST" action="{{ url_for('admin.rescrape_recipe', recipe_id=recipe.id) }}"></form>
+<form id="rescrape-form" method="POST" action="{{ url_for('admin.rescrape_recipe', recipe_id=recipe.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
 
 <!-- Hidden form for AI re-match -->
-<form id="ai-rematch-form" method="POST" action="{{ url_for('admin.ai_rematch_recipe', recipe_id=recipe.id) }}"></form>
+<form id="ai-rematch-form" method="POST" action="{{ url_for('admin.ai_rematch_recipe', recipe_id=recipe.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+</form>
 
 
 <script src="{{ url_for('static', filename='js/autocomplete.js') }}"></script>

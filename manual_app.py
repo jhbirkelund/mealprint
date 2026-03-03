@@ -1,4 +1,5 @@
 from flask import Flask, request, render_template, redirect, session, url_for
+from flask_wtf.csrf import CSRFProtect
 from functools import wraps
 import json
 import os
@@ -12,6 +13,7 @@ from admin import admin_bp
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-change-in-production')
+CSRFProtect(app)
 EDIT_PASSPHRASE = os.environ.get('EDIT_PASSPHRASE', 'edit-secret')
 
 def require_edit_auth(f):

@@ -11,6 +11,7 @@
 
     {% if job.status == 'pending' %}
         <form method="POST" action="{{ url_for('admin.run_job', job_id=job.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit"
                 class="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 font-medium text-sm">
                 Run Job

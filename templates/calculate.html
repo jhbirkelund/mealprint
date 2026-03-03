@@ -107,6 +107,7 @@
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
         <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-6">Save Recipe</h2>
         <form method="POST" action="/save/">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="recipe_name" value="{{ recipe_name }}">
             <input type="hidden" name="servings" value="{{ servings }}">
             <input type="hidden" name="total_co2" value="{{ total_co2 }}">

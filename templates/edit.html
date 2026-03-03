@@ -13,6 +13,7 @@
 
     <!-- Form -->
     <form method="POST" action="/update/{{ recipe.id }}" id="edit-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if publish %}
         <input type="hidden" name="publish" value="1">
         {% endif %}

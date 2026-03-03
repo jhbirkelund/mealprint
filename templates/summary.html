@@ -14,6 +14,7 @@
 
     <!-- Form -->
     <form method="POST" action="/calculate" id="ingredients-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="recipe_name" value="{{ recipe_name }}">
         <input type="hidden" name="servings" value="{{ servings }}">
         <input type="hidden" name="source" value="{{ source }}">

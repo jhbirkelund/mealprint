@@ -15,6 +15,7 @@
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
         <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">Import from URL</h2>
         <form method="POST" action="/scrape">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="flex gap-3">
                 <input type="url" name="recipe_url" placeholder="https://recipe-website.com/..." required
                     class="flex-1 px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400">
@@ -35,6 +36,7 @@
     <!-- Manual Entry Card -->
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
         <form method="POST" action="/summary">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="space-y-6">
                 <!-- Recipe Name -->
                 <div>
