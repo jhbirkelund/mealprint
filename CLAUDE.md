@@ -213,22 +213,20 @@ Import only: pandas, openpyxl
 - Missing: density details per ingredient (category, density value used) — need to store or re-derive
 - Missing: `db_metadata` table for import dates — needs creating
 
-### Phase 6: Security Hardening *(prerequisite for external users)*
+### Phase 6: Security Hardening ✅ COMPLETE
 
-Must be done before sharing the URL publicly. Track progress in Admin → Security tracker.
+**Critical (all done):**
+- ✅ Passphrase protection on edit/delete routes (`require_edit_auth` decorator)
+- ✅ CSRF tokens on all POST forms (`flask-wtf`)
+- ✅ URL sanitization — `sanitize_url()` rejects non-http/https schemes
+- ✅ Error handling — generic messages to users, details logged server-side
+- ✅ `FLASK_DEBUG` default changed to `False`; `SECRET_KEY` confirmed in Render
 
-**Critical blockers:**
-- Add passphrase protection to edit/delete routes (temporary until user accounts exist)
-- CSRF tokens on all POST forms (add `flask-wtf`)
-- Sanitize `source` URL and `og_image_url` before saving — reject `javascript:` schemes
-- Fix error handling — return generic messages to users, log details server-side only
-- Confirm `FLASK_DEBUG=False` and `SECRET_KEY` set as Render env vars
-
-**High priority:**
-- Rate limiting on `/scrape` and `/admin/login` (add `flask-limiter`)
-- Input validation: max lengths on name/tags, positive-only on servings/amounts
-- Security headers middleware (X-Frame-Options, X-Content-Type-Options, HSTS)
-- Admin session: add idle timeout + HttpOnly/Secure/SameSite cookie flags
+**High priority (all done):**
+- ✅ Rate limiting — 10/min on `/scrape`, 5/min on `/admin/login` (`flask-limiter`)
+- ✅ Input validation — name max 200 chars, tags capped, servings/amounts positive only
+- ✅ Security headers — X-Frame-Options, X-Content-Type-Options, HSTS via `after_request`
+- ✅ Admin session hardening — HttpOnly, Secure, SameSite=Lax, 1hr idle timeout
 
 ### Phase 7: Compliance & Legal *(prerequisite for external users)*
 
