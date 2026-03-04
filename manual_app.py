@@ -4,7 +4,6 @@ from functools import wraps
 from extensions import limiter
 import json
 import os
-from ingredient_parser import parse_ingredient
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, DENSITIES, get_weight_in_grams, calculate_rating, get_density_category
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
@@ -87,6 +86,9 @@ except Exception as e:
 
 
 def get_processed_ingredients(raw_text_block):
+    # Lazy import: load NLP model only when first needed (not at startup)
+    from ingredient_parser import parse_ingredient
+
     processed_list = []
     lines = raw_text_block.split('\n')
 

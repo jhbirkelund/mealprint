@@ -6,15 +6,7 @@ Used by both the web app (manual_app.py) and bulk scraper (bulk_scraper.py).
 """
 
 import re
-import nltk
-from ingredient_parser import parse_ingredient
 from rapidfuzz import process, fuzz
-
-# Ensure NLTK model is available at startup (avoids delay on first request)
-try:
-    nltk.data.find('taggers/averaged_perceptron_tagger_eng')
-except LookupError:
-    nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, get_density, VOLUME_UNITS
 from db import get_ingredient_by_name, get_all_climate_ingredients
 
@@ -117,6 +109,9 @@ def parse_ingredients(raw_text_block, climate_names=None):
 
     processed_list = []
     lines = raw_text_block.split('\n')
+
+    # Lazy import: load NLP model only when first needed (not at startup)
+    from ingredient_parser import parse_ingredient
 
     for line in lines:
         line = line.strip()
