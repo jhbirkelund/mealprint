@@ -656,6 +656,14 @@ def resources():
 def resources_density():
     return render_template('density.html')
 
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
+
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
 @app.errorhandler(500)
 def internal_error(e):
     app.logger.exception("500 error: %s", e)
