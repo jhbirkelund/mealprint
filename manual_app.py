@@ -4,7 +4,7 @@ from functools import wraps
 from extensions import limiter
 import json
 import os
-from quantulum3 import parser
+from ingredient_parser import parse_ingredient
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, DENSITIES, get_weight_in_grams, calculate_rating, get_density_category
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
@@ -90,8 +90,8 @@ def get_processed_ingredients(raw_text_block):
     processed_list = []
     lines = raw_text_block.split('\n')
 
-    # Informal units that quantulum3 doesn't recognize - map to standard units
-    # Note: Danish spoon units (tsk, spsk) are now in config/units.json unit_map
+    # Informal units - preprocessed before parsing to ensure correct gram conversion
+    # Note: Danish spoon units (tsk, spsk) are handled in config/units.json unit_map
     INFORMAL_UNITS = {
         # English
         'handful': '30g',
@@ -117,12 +117,22 @@ def get_processed_ingredients(raw_text_block):
                 line = re.sub(rf'(\d+\s*)?{informal}', replacement, line, flags=re.IGNORECASE)
                 break
 
-        quants = parser.parse(line)
-        if quants:
-            amt = quants[0].value
-            raw_unit_name = quants[0].unit.name.lower()
-            unit = UNIT_MAP.get(raw_unit_name, raw_unit_name)
-            search_query = str(line.replace(str(quants[0].surface), "").strip().split(',')[0])
+        parsed = parse_ingredient(line)
+        if parsed.amount:
+            qty_str = str(parsed.amount[0].quantity or '1')
+            if '-' in qty_str:  # ranges like "2-3" → take lower bound
+                qty_str = qty_str.split('-')[0]
+            try:
+                if '/' in qty_str:
+                    num, den = qty_str.split('/')
+                    amt = float(num) / float(den)
+                else:
+                    amt = float(qty_str)
+            except (ValueError, ZeroDivisionError):
+                amt = 1
+            unit_text = str(parsed.amount[0].unit or 'piece').lower()
+            unit = UNIT_MAP.get(unit_text, unit_text)
+            search_query = " ".join(n.text for n in parsed.name).split(',')[0].strip() if parsed.name else line
 
             # Step 0: Check for alias matches (longest match first)
             search_lower = search_query.lower()

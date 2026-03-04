@@ -2,11 +2,10 @@ flask
 flask-wtf
 flask-limiter
 pandas
-quantulum3
+ingredient-parser-nlp
 recipe-scrapers
 rapidfuzz
 openpyxl
 gunicorn
-setuptools<71
 psycopg2-binary
 mistralai

@@ -6,8 +6,15 @@ Used by both the web app (manual_app.py) and bulk scraper (bulk_scraper.py).
 """
 
 import re
-from quantulum3 import parser as quant_parser
+import nltk
+from ingredient_parser import parse_ingredient
 from rapidfuzz import process, fuzz
+
+# Ensure NLTK model is available at startup (avoids delay on first request)
+try:
+    nltk.data.find('taggers/averaged_perceptron_tagger_eng')
+except LookupError:
+    nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, get_weight_in_grams, get_density, VOLUME_UNITS
 from db import get_ingredient_by_name, get_all_climate_ingredients
 
@@ -124,18 +131,27 @@ def parse_ingredients(raw_text_block, climate_names=None):
                 line = re.sub(rf'(\d+\s*)?{re.escape(informal)}', replacement, line, flags=re.IGNORECASE)
                 break
 
-        quants = quant_parser.parse(line)
-        if quants:
-            amt = quants[0].value
-            raw_unit_name = quants[0].unit.name.lower()
-            unit = UNIT_MAP.get(raw_unit_name, raw_unit_name)
-            search_query = str(line.replace(str(quants[0].surface), "").strip().split(',')[0])
+        parsed = parse_ingredient(line)
+        # NLP extracts clean ingredient name (strips prep notes, adjectives, size modifiers)
+        search_query = " ".join(n.text for n in parsed.name).split(',')[0].strip() if parsed.name else line
+        if parsed.amount:
+            qty_str = str(parsed.amount[0].quantity or '1')
+            if '-' in qty_str:  # ranges like "2-3" → take lower bound
+                qty_str = qty_str.split('-')[0]
+            try:
+                if '/' in qty_str:
+                    num, den = qty_str.split('/')
+                    amt = float(num) / float(den)
+                else:
+                    amt = float(qty_str)
+            except (ValueError, ZeroDivisionError):
+                amt = 1
+            unit_text = str(parsed.amount[0].unit or 'piece').lower()
+            unit = UNIT_MAP.get(unit_text, unit_text)
         else:
             # No quantity found - default to 1 piece (e.g., "salt", "pepper to taste")
             amt = 1
             unit = 'piece'
-            # Use the whole line as search query, clean up common phrases
-            search_query = line
             for phrase in ['to taste', 'as needed', 'for garnish', 'optional', 'a pinch of', 'pinch of']:
                 search_query = search_query.lower().replace(phrase, '').strip()
             search_query = search_query.strip(',')
