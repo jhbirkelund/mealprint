@@ -23,6 +23,10 @@
         "egg": 60,
         "onion": 150,
         "tomato": 120,
+        "broccoli": 400,
+        "cauliflower": 600,
+        "cabbage": 800,
+        "lettuce": 300,
         "clove": 5,
         "garlic": 5,
         "bell pepper": 150,
@@ -119,6 +123,16 @@
         "can": "can",
         "cans": "can",
         "tin": "can",
-        "tins": "can"
+        "tins": "can",
+        "clove": "piece",
+        "cloves": "piece",
+        "head": "piece",
+        "heads": "piece",
+        "stalk": "piece",
+        "stalks": "piece",
+        "slice": "piece",
+        "slices": "piece",
+        "sprig": "piece",
+        "sprigs": "piece"
     }
 }

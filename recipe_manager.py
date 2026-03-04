@@ -81,12 +81,12 @@ def get_weight_in_grams(amount, unit, ingredient_name=""):
 
     # Piece units: lookup ingredient weight
     if clean_unit in ["piece", "pcs", "unit", "can"]:
+        # Cans always use standard can weight (400g), not the ingredient's piece weight
+        if clean_unit == "can":
+            return amount * CONVERSIONS["ingredients"].get("can", 400)
         for key in CONVERSIONS["ingredients"]:
             if key in name:
                 return amount * CONVERSIONS["ingredients"][key]
-        # Fall back to default weight (100g for piece, 400g for can)
-        if clean_unit == "can":
-            return amount * CONVERSIONS["units"]["can"]
         return amount * CONVERSIONS["units"]["piece"]
 
     # Unknown unit - return 0
