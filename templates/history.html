@@ -70,7 +70,7 @@
            data-index="{{ loop.index }}">
 
             <!-- Image or fallback -->
-            {% if r.og_image_url %}
+            {% if r.og_image_url and r.og_image_url != 'None' %}
             <img src="{{ r.og_image_url }}" alt="{{ r.name }}"
                 class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
             {% else %}

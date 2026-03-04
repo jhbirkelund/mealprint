@@ -6,7 +6,7 @@
 <div class="pt-4 md:pt-8">
 
     <!-- Hero Image (if available) -->
-    {% if recipe.og_image_url %}
+    {% if recipe.og_image_url and recipe.og_image_url != 'None' %}
     <div class="relative rounded-3xl overflow-hidden mb-6 shadow-sm">
         {% if recipe.source and recipe.source.startswith('http') %}
         <a href="{{ recipe.source }}" target="_blank" class="block">
