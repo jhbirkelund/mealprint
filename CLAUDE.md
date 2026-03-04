@@ -48,7 +48,7 @@ Requires `DATABASE_URL` pointing to Supabase.
 | `manual_app.py` | Flask web app - recipe input, calculation, history, resources |
 | `admin.py` | Admin blueprint - bulk import, review queue, published list, job monitoring |
 | `db.py` | Database layer - recipes, ingredients, climate data, import jobs |
-| `ingredient_matcher.py` | Parsing & matching - quantulum3 + rapidfuzz + Mistral AI fallback |
+| `ingredient_matcher.py` | Parsing & matching - ingredient-parser-nlp + rapidfuzz + Mistral AI fallback |
 | `recipe_manager.py` | Utilities - unit conversion, density lookup, rating calculation |
 | `mistral_matcher.py` | AI matching - batch ingredient matching via Mistral API |
 | `bulk_scraper.py` | CLI batch importer - scrapes URLs, auto-matches, saves as drafts |
@@ -56,8 +56,8 @@ Requires `DATABASE_URL` pointing to Supabase.
 ### Key Features
 
 **Ingredient Matching Pipeline:**
-1. Parse with quantulum3 (extracts amounts/units)
-2. Preprocess informal units (handful, dash, pinch, spsk, knivspids) - handles unitless "dash of X"
+1. Preprocess informal units (handful, dash, pinch, spsk, knivspids) - handles unitless "dash of X"
+2. Parse with ingredient-parser-nlp (NLP/CRF model trained on 81k sentences — extracts amount, unit, clean name, strips prep notes)
 3. Check aliases (`config/ingredient_aliases.json`)
 4. Hybrid matching: token-based + rapidfuzz against 2,957 ingredients
 5. AI fallback (Mistral) when confidence < 92%
@@ -71,7 +71,7 @@ Requires `DATABASE_URL` pointing to Supabase.
 **Multi-Source Climate Database:**
 | Priority | Source | Ingredients | Data |
 |----------|--------|-------------|------|
-| 1st | ClimateDB (Danish) | ~500 | CO2 + nutrition |
+| 1st | The Big Climate Database (Danish) | ~500 | CO2 + nutrition |
 | 2nd | Agribalyse (French) | ~2,500 | CO2 only |
 | 3rd | HESTIA (future) | TBD | Global fallback |
 
@@ -132,7 +132,7 @@ import_items (job_id, url, status, recipe_id, error_message)
 
 ## Dependencies
 
-Core: flask, quantulum3, recipe_scrapers, rapidfuzz, psycopg2-binary, gunicorn
+Core: flask, ingredient-parser-nlp, recipe_scrapers, rapidfuzz, psycopg2-binary, gunicorn
 Import only: pandas, openpyxl
 
 ## Public Pages
@@ -147,21 +147,6 @@ Import only: pandas, openpyxl
 | `/about-rating` | Carbon rating system explanation |
 
 ## Roadmap
-
-### Phase 4: Discovery Portal (Next)
-- `/discover` - Public searchable recipe index
-- Filters: CO2 rating, tags, language, domain
-- Pagination, "inspiration cards" with thumbnails
-
-### Fix: Replace quantulum3 parser
-- `quantulum3` is unmaintained and breaks on new Python/setuptools versions (currently pinned to `setuptools<71` as workaround)
-- Used in exactly two files (`ingredient_matcher.py`, `manual_app.py`) for one purpose: extract number + unit + surface from ingredient strings
-- Replace with a custom regex parser built against the known unit list in `config/units.json` (~20-30 lines, zero dependencies)
-
-### Fix: Rescrape & AI Re-match Timeouts
-- Rescrape and AI re-match in admin frequently time out — they run synchronously during the HTTP request (scraping + Mistral API calls can take 10-30s)
-- Fix: run them as background jobs (same pattern as bulk import — queue a job, poll for completion)
-- Affects: "Rescrape" and "AI Re-match" buttons in admin review queue and published list
 
 ### Phase 5: Transparency Reports
 
@@ -180,9 +165,9 @@ Import only: pandas, openpyxl
 
 2. **Data Sources**
    - Static section listing the databases used in this report, with:
-     - ClimateDB: description, link to climatedb.dk, date last imported into Mealprint
-     - Agribalyse: description, link to agribalyse.fr, date last imported into Mealprint
-   - Note: dates stored in a `db_metadata` table (key/value: `climatedb_imported`, `agribalyse_imported`)
+     - The Big Climate Database (https://thebigclimatedatabase.com/): description, date last imported into Mealprint
+     - Agribalyse (https://agribalyse.ademe.fr): description, date last imported into Mealprint
+   - Note: dates stored in a `db_metadata` table (key/value: `bigclimatedb_imported`, `agribalyse_imported`)
 
 3. **Ingredient Audit Table**
    One row per ingredient. Columns:
@@ -193,7 +178,7 @@ Import only: pandas, openpyxl
      - If direct weight unit: `250g` (no conversion needed)
      - If unit weight (e.g. egg): `2 eggs → 120g (unit weight: 60g/egg)`
    - **Matched ingredient** — name as it appears in the source DB
-   - **Source DB** — ClimateDB or Agribalyse
+   - **Source DB** — The Big Climate Database or Agribalyse
    - **CO₂/kg** — the value pulled from the DB
    - **Calculated CO₂** — grams ÷ 1000 × CO₂/kg = result (shown as formula + result)
 
@@ -228,15 +213,13 @@ Import only: pandas, openpyxl
 - ✅ Security headers — X-Frame-Options, X-Content-Type-Options, HSTS via `after_request`
 - ✅ Admin session hardening — HttpOnly, Secure, SameSite=Lax, 1hr idle timeout
 
-### Phase 7: Compliance & Legal *(prerequisite for external users)*
+### Phase 7: Compliance & Legal ✅ COMPLETE
 
-**Required before launch:**
-- Privacy policy page (`/privacy`) — what data is collected, why, how long kept, who processes it (Supabase)
-- Cookie disclosure — session cookies only, no tracking. Add minimal notice to footer or banner
-- Terms of service page (`/terms`) — acceptable use, no liability for CO2 accuracy, content ownership
+- ✅ Privacy policy page (`/privacy`)
+- ✅ Cookie notice banner in base.html (localStorage dismiss, session cookies only)
+- ✅ Terms of service page (`/terms`)
 
-**Needed before user accounts:**
-- Data retention policy (defined in privacy policy)
+**Needed before user accounts (deferred):**
 - Data Processing Agreement with Supabase (their standard DPA, sign via Supabase dashboard)
 - Right to deletion mechanism
 
@@ -244,11 +227,12 @@ Import only: pandas, openpyxl
 - Keep transparency reports up to date — they serve as substantiation documents
 - Establish a process for updating climate data sources when new versions release
 
-### Phase 8: Pre-Launch Polish
+### Phase 8: Pre-Launch Polish 🔄 IN PROGRESS
 
 **Technical debt to clear:**
-- Replace `quantulum3` with custom regex parser — removes fragile dependency, fixes potential parse hangs (see Fix note above)
-- Fix rescrape & AI re-match timeouts — move to background jobs (see Fix note above)
+- ✅ Replace `quantulum3` with `ingredient-parser-nlp` — NLP/CRF model, much better accuracy on long ingredient descriptions; lazy-loaded for fast startup
+- ✅ Fix unit mapping bugs — clove, head, stalk, slice, sprig now mapped; can weight fixed (always 400g); broccoli/cauliflower/cabbage/lettuce weights added
+- Fix rescrape & AI re-match timeouts — move to background jobs (same pattern as bulk import — queue a job, poll for completion); affects "Rescrape" and "AI Re-match" buttons in admin
 
 **Content & UX:**
 - Build up recipe database to ~200+ quality published recipes across categories
