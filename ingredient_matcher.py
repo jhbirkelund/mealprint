@@ -47,15 +47,16 @@ INFORMAL_UNITS = {
 def load_climate_names():
     """Load climate ingredient names from database for fuzzy matching.
 
-    Returns list of all searchable names (EN + DK + FR) to support
-    multi-language recipe scraping and searching.
+    Returns English and French names only. Danish names (name_dk) are excluded:
+    every Danish DB ingredient has an English equivalent, so Danish names only
+    cause wrong matches (e.g. "pasta" matching "pasta, rå" instead of "Pasta, raw").
+    French names are kept because many Agribalyse ingredients have no English name.
     """
     try:
         ingredients = get_all_climate_ingredients()
         names = []
         for ing in ingredients:
-            # Add all language variants for searchability
-            for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+            for name in [ing.get('name_en'), ing.get('name_fr')]:
                 if name and name not in names:
                     names.append(name)
         return names
@@ -84,7 +85,7 @@ def get_ingredients_for_autocomplete(climate_ingredients=None):
     for ing in climate_ingredients:
         source_db = ing.get('source', 'unknown')
         # Add all language variants with their source and language tag
-        for lang, name in [('en', ing.get('name_en')), ('dk', ing.get('name_dk')), ('fr', ing.get('name_fr'))]:
+        for lang, name in [('en', ing.get('name_en')), ('fr', ing.get('name_fr'))]:
             if name and name not in seen_names:
                 seen_names.add(name)
                 all_ingredients.append({'name': name, 'source': source_db, 'lang': lang})
@@ -214,7 +215,7 @@ def parse_ingredients(raw_text_block, climate_names=None):
     return processed_list
 
 
-def calculate_ingredient(amount, unit, ingredient_name):
+def calculate_ingredient(amount, unit, ingredient_name, original_name=""):
     """
     Calculate CO2 and nutrition for a single ingredient.
 
@@ -222,6 +223,8 @@ def calculate_ingredient(amount, unit, ingredient_name):
         amount: Numeric amount (e.g., 200)
         unit: Unit string (e.g., 'g', 'cup', 'piece')
         ingredient_name: Matched ingredient name from climate DB
+        original_name: Original ingredient text before alias substitution (used for
+                       piece weight lookup to distinguish e.g. "egg yolk" vs "egg")
 
     Returns:
         Dict with keys: grams, co2, source_db, density_applied, energy_kj, fat_g, carbs_g, protein_g
@@ -243,7 +246,7 @@ def calculate_ingredient(amount, unit, ingredient_name):
     clean_unit = UNIT_MAP.get(unit.lower(), unit.lower())
     density_applied = get_density(ingredient_name) if clean_unit in VOLUME_UNITS else None
 
-    grams = get_weight_in_grams(amount, unit, ingredient_name)
+    grams = get_weight_in_grams(amount, unit, ingredient_name, original_name)
     item_co2 = (grams / 1000) * co2_val
 
     return {
@@ -282,7 +285,7 @@ def calculate_recipe_totals(ingredients):
         match_name = ing['item']
         original_line = ing.get('original_line', '')
 
-        result = calculate_ingredient(amount, unit, match_name)
+        result = calculate_ingredient(amount, unit, match_name, original_line)
 
         if not result:
             continue

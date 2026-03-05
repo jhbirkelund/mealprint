@@ -55,14 +55,20 @@ def get_density_category(ingredient_name):
             return category.replace('_', ' ')
     return None
 
-def get_weight_in_grams(amount, unit, ingredient_name=""):
+def get_weight_in_grams(amount, unit, ingredient_name="", original_name=""):
     """
     Convert amount + unit to grams.
     - Volume units (cup, tbsp, ml, etc.) apply ingredient-specific density
     - Weight units (g, kg, lb, oz) convert directly
     - Piece units look up ingredient weights
+
+    original_name: the ingredient text before alias substitution (e.g. "2 egg yolks").
+    Used for piece weight lookup so "egg yolk" (18g) beats the generic "egg" (60g) match.
     """
     name = ingredient_name.lower()
+    # For piece weight lookup, prefer original text — it's more specific than the DB name.
+    # e.g. "egg yolk" in original beats "egg" matching "eggs, chicken" in DB name.
+    lookup_name = original_name.lower() if original_name else name
     clean_unit = UNIT_MAP.get(unit.lower(), unit.lower())
 
     # Volume units: convert to ml first, then apply density
@@ -79,13 +85,14 @@ def get_weight_in_grams(amount, unit, ingredient_name=""):
     if clean_unit in ["handful", "sprinkling"]:
         return amount * CONVERSIONS["units"][clean_unit]
 
-    # Piece units: lookup ingredient weight
+    # Piece units: lookup ingredient weight.
+    # Sort keys longest-first so specific entries ("egg yolk") win over general ones ("egg").
     if clean_unit in ["piece", "pcs", "unit", "can"]:
         # Cans always use standard can weight (400g), not the ingredient's piece weight
         if clean_unit == "can":
             return amount * CONVERSIONS["ingredients"].get("can", 400)
-        for key in CONVERSIONS["ingredients"]:
-            if key in name:
+        for key in sorted(CONVERSIONS["ingredients"].keys(), key=len, reverse=True):
+            if key in lookup_name or key in name:
                 return amount * CONVERSIONS["ingredients"][key]
         return amount * CONVERSIONS["units"]["piece"]
 

@@ -20,6 +20,10 @@
         "quart": 946
     },
     "ingredient_weights": {
+        "egg yolk": 18,
+        "egg yolks": 18,
+        "egg white": 30,
+        "egg whites": 30,
         "egg": 60,
         "onion": 150,
         "tomato": 120,
@@ -96,7 +100,9 @@
         "pounds": "lb",
         "pound-mass": "lb",
         "lb": "lb",
+        "lb.": "lb",
         "lbs": "lb",
+        "lbs.": "lb",
         "ounce": "oz",
         "ounces": "oz",
         "oz": "oz",

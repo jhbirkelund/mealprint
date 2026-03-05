@@ -173,7 +173,7 @@
             <div class="space-y-3">
                 {% for ing in recipe.ingredients %}
                 <div class="flex items-center justify-between py-2 border-b border-slate-100 last:border-0">
-                    <span class="text-slate-900">{{ ing.item }}</span>
+                    <span class="text-slate-900 min-w-0 truncate flex-1 mr-4">{{ ing.item }}</span>
                     <div class="flex items-center gap-4">
                         <span class="text-slate-500 text-sm">{{ ing.grams|int }}g</span>
                         <span class="text-slate-700 font-medium w-20 text-right">{{ "%.2f"|format(ing.co2) }} kg</span>
@@ -186,7 +186,7 @@
 
     <!-- Delete Action -->
     <div class="text-center pb-10">
-        <button onclick="confirmDelete()" class="text-slate-400 hover:text-rose-500 text-sm font-medium transition">Delete this recipe</button>
+        <button onclick="confirmDelete()" class="text-slate-400 hover:text-rose-500 text-sm font-medium transition py-2 px-4">Delete this recipe</button>
     </div>
 
 </div>

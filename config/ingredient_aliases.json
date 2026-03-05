@@ -18,6 +18,10 @@
         "green bell pepper": "Pepper, sweet",
         "red bell pepper": "Pepper, sweet",
         "yellow bell pepper": "Pepper, sweet",
+        "egg yolks": "Eggs, chicken",
+        "egg yolk": "Eggs, chicken",
+        "egg whites": "Eggs, chicken",
+        "egg white": "Eggs, chicken",
         "large eggs": "Eggs, chicken",
         "large egg": "Eggs, chicken",
         "eggs": "Eggs, chicken",
@@ -41,9 +45,9 @@
         "skimmed milk": "Milk, skimmed, 0.5 % fat",
         "semi-skimmed milk": "Milk, partly skimmed, 1.5 % fat",
         "milk": "Milk, partly skimmed, 1.5 % fat",
-        "vegetable oil": "oil",
+        "vegetable oil": "oil rapeseed",
         "canola oil": "oil rapeseed",
-        "cooking oil": "oil",
+        "cooking oil": "oil rapeseed",
         "olive oil": "oil olive",
         "extra virgin olive oil": "oil olive",
         "chicken breast": "Chicken, breast",
@@ -159,6 +163,9 @@
         "veggie broth": "Bouillon, vegetable",
         "veggie stock": "Bouillon, vegetable",
 
+        "marinara sauce": "tomato pasta sauce",
+        "marinara": "tomato pasta sauce",
+
         "tomato puree": "Tomato paste, concentrated",
         "tomato purée": "Tomato paste, concentrated",
         "tomato pureé": "Tomato paste, concentrated",
@@ -224,9 +231,16 @@
 
         "sriracha": "Chili sauce",
         "sriracha sauce": "Chili sauce",
+        "hot sauce": "Chili sauce",
+        "tabasco": "Chili sauce",
 
         "bouillon": "Bouillon, vegetable",
         "broth": "Bouillon, vegetable",
-        "stock": "Bouillon, vegetable"
+        "stock": "Bouillon, vegetable",
+
+        "dry white wine": "wine white",
+        "white wine": "wine white",
+        "dry red wine": "wine red",
+        "red wine": "wine red"
     }
 }

@@ -80,6 +80,14 @@
         "dried_herbs": {
             "density": 0.20,
             "keywords": ["oregano", "thyme", "marjoram", "bay, leaves", "basil, dried", "parsley, dried", "rosemary, dried", "sage, dried", "dill, dried", "tarragon, dried"]
+        },
+        "fresh_herbs": {
+            "density": 0.07,
+            "keywords": ["basil, fresh", "parsley, fresh", "coriander, fresh", "mint, fresh", "dill, fresh", "chives, raw", "sage, fresh", "tarragon, fresh", "rosemary, fresh", "thyme, fresh"]
+        },
+        "grated_cheese": {
+            "density": 0.35,
+            "keywords": ["parmesan", "pecorino", "romano"]
         }
     },
     "default_density": 1.0

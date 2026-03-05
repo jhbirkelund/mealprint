@@ -16,10 +16,10 @@
         <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">Import from URL</h2>
         <form method="POST" action="/scrape">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="flex gap-3">
+            <div class="flex flex-col sm:flex-row gap-3">
                 <input type="url" name="recipe_url" placeholder="https://recipe-website.com/..." required
                     class="flex-1 px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400">
-                <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-medium transition shadow-sm flex-shrink-0">
+                <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-medium transition shadow-sm sm:flex-shrink-0">
                     Scrape
                 </button>
             </div>

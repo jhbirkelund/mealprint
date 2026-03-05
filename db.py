@@ -309,6 +309,17 @@ def init_db():
             VALUES (%s, %s, %s, %s, %s, %s)
         ''', items)
 
+    # On startup: mark any stale "running" recipe jobs as failed.
+    # Background threads (rescrape / ai_rematch) die when the process is killed.
+    # Without this, a job interrupted by a deploy stays "running" forever and the
+    # browser polls indefinitely.
+    cur.execute("""
+        UPDATE import_jobs
+        SET status = 'error', result_message = 'Job interrupted — server restarted. Please try again.'
+        WHERE status = 'running'
+        AND job_type IN ('rescrape', 'ai_rematch')
+    """)
+
     conn.commit()
     cur.close()
     conn.close()
