@@ -18,7 +18,7 @@ import json
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, DENSITIES, get_weight_in_grams, calculate_rating, get_density_category
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
-from db import init_db, save_recipe_to_db, get_all_recipes, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name, get_all_climate_ingredients
+from db import init_db, save_recipe_to_db, get_all_recipes, get_published_recipes_for_explore, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name, get_all_climate_ingredients
 from ingredient_matcher import get_ingredients_for_autocomplete
 from admin import admin_bp
 
@@ -210,23 +210,14 @@ def get_processed_ingredients(raw_text_block):
 @app.route('/')
 def explore():
     """Home page - Explore recipes."""
-    # Load recipes from database
-    recipes = get_all_recipes()
+    recipes = get_published_recipes_for_explore()
 
-    # Only show published recipes on the public explore page
-    recipes = [r for r in recipes if r.get('is_published', True)]
-
-    # Calculate rating for any recipes missing it
+    # Safety net: calculate rating for any recipes missing it
     for r in recipes:
         if not r.get('rating') or not r['rating'].get('label'):
             r['rating'] = calculate_rating(r.get('co2_per_serving', 0))
 
-    # Collect all unique tags across recipes
-    all_tags = set()
-    for r in recipes:
-        if r.get('tags'):
-            all_tags.update(r['tags'])
-    all_tags = sorted(all_tags)
+    all_tags = sorted(set(tag for r in recipes for tag in (r.get('tags') or [])))
 
     return render_template('history.html', recipes=recipes, all_tags=all_tags)
 

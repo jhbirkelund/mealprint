@@ -385,6 +385,56 @@ def save_recipe_to_db(recipe_name, ingredients, total_co2, servings, nutrition=N
 
     return recipe_id
 
+def get_published_recipes_for_explore():
+    """Get all published recipes for the explore page in a single query.
+
+    Only fetches fields needed for recipe cards — does NOT load ingredients.
+    Uses a JOIN for tags so the whole page costs exactly 1 DB query.
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute('''
+        SELECT
+            r.id, r.name, r.co2_per_serving,
+            r.rating_label, r.rating_color, r.rating_emoji,
+            r.og_image_url, r.site_rating, r.created_at,
+            COALESCE(
+                array_agg(rt.tag ORDER BY rt.tag) FILTER (WHERE rt.tag IS NOT NULL),
+                '{}'
+            ) AS tags
+        FROM recipes r
+        LEFT JOIN recipe_tags rt ON r.id = rt.recipe_id
+        WHERE r.is_published = TRUE
+        GROUP BY r.id, r.name, r.co2_per_serving, r.rating_label, r.rating_color,
+                 r.rating_emoji, r.og_image_url, r.site_rating, r.created_at
+        ORDER BY r.created_at DESC
+    ''')
+
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    results = []
+    for r in rows:
+        results.append({
+            'id': r['id'],
+            'name': r['name'],
+            'co2_per_serving': r['co2_per_serving'] or 0,
+            'og_image_url': r['og_image_url'],
+            'site_rating': r['site_rating'],
+            'created_at': r['created_at'],
+            'tags': list(r['tags']) if r['tags'] else [],
+            'rating': {
+                'label': r['rating_label'],
+                'color': r['rating_color'],
+                'emoji': r['rating_emoji'],
+            } if r['rating_label'] else None
+        })
+
+    return results
+
+
 def get_all_recipes():
     """Get all recipes from the database."""
     conn = get_connection()
