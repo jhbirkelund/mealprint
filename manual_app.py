@@ -17,9 +17,8 @@ from extensions import limiter
 import json
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, DENSITIES, get_weight_in_grams, calculate_rating, get_density_category
 from recipe_scrapers import scrape_me
-from rapidfuzz import process, fuzz
 from db import init_db, save_recipe_to_db, get_all_recipes, get_published_recipes_for_explore, get_recipe_by_id, update_recipe_in_db, delete_recipe_from_db, get_ingredient_by_name, get_all_climate_ingredients
-from ingredient_matcher import get_ingredients_for_autocomplete
+from ingredient_matcher import get_ingredients_for_autocomplete, parse_ingredients
 from admin import admin_bp
 
 app = Flask(__name__)
@@ -96,118 +95,6 @@ except Exception as e:
     CLIMATE_INGREDIENTS = []
     CLIMATE_NAMES = []
     ALL_INGREDIENTS_FOR_AUTOCOMPLETE = []
-
-
-def get_processed_ingredients(raw_text_block):
-    # Lazy import: load NLP model only when first needed (not at startup)
-    from ingredient_parser import parse_ingredient
-
-    processed_list = []
-    lines = raw_text_block.split('\n')
-
-    # Informal units - preprocessed before parsing to ensure correct gram conversion
-    # Note: Danish spoon units (tsk, spsk) are handled in config/units.json unit_map
-    INFORMAL_UNITS = {
-        # English
-        'handful': '30g',
-        'handfuls': '30g',
-        'sprinkling': '2g',
-        'sprinkle': '2g',
-        # Danish
-        'stk': '1 piece',    # styk (piece)
-        'stk.': '1 piece',
-        'knivspids': '0.5g', # knife tip
-    }
-
-    for line in lines:
-        line = line.strip()
-        if not line: continue
-
-        # Preprocess: replace informal units with gram equivalents
-        line_lower = line.lower()
-        for informal, replacement in INFORMAL_UNITS.items():
-            if informal in line_lower:
-                # Replace "1 handful" or "a handful" with "30g"
-                import re
-                line = re.sub(rf'(\d+\s*)?{informal}', replacement, line, flags=re.IGNORECASE)
-                break
-
-        parsed = parse_ingredient(line)
-        if parsed.amount:
-            qty_str = str(parsed.amount[0].quantity or '1')
-            if '-' in qty_str:  # ranges like "2-3" → take lower bound
-                qty_str = qty_str.split('-')[0]
-            try:
-                if '/' in qty_str:
-                    num, den = qty_str.split('/')
-                    amt = float(num) / float(den)
-                else:
-                    amt = float(qty_str)
-            except (ValueError, ZeroDivisionError):
-                amt = 1
-            unit_text = str(parsed.amount[0].unit or 'piece').lower()
-            unit = UNIT_MAP.get(unit_text, unit_text)
-            search_query = " ".join(n.text for n in parsed.name).split(',')[0].strip() if parsed.name else line
-
-            # Step 0: Check for alias matches (longest match first)
-            search_lower = search_query.lower()
-            for alias, replacement in sorted(INGREDIENT_ALIASES.items(), key=lambda x: len(x[0]), reverse=True):
-                if alias in search_lower:
-                    search_query = replacement
-                    break
-
-            # Step 1: Token-based contains matching
-            # Check if any word from search (>3 chars) appears in DB name, or vice versa
-            # Uses cached CLIMATE_NAMES from Supabase (Danish + Agribalyse)
-            search_words = [w.lower() for w in search_query.split() if len(w) > 3]
-
-            def word_match_score(name):
-                name_lower = name.lower()
-                name_words = [w for w in name_lower.replace(',', '').split() if len(w) > 3]
-                score = 0
-                for sw in search_words:
-                    if sw in name_lower:
-                        score += 2  # Search word found in name
-                for nw in name_words:
-                    if nw in search_query.lower():
-                        score += 2  # Name word found in search
-                # Bonus: name starts with first search word (prefer "Pork, mince" over "Veal and pork, mince")
-                if search_words and name_lower.startswith(search_words[0]):
-                    score += 5
-                return score
-
-            scored_matches = [(name, word_match_score(name)) for name in CLIMATE_NAMES]
-            contains_matches = [name for name, score in scored_matches if score > 0]
-            # Sort by score descending, then by name length (prefer shorter names as tiebreaker)
-            contains_matches.sort(key=lambda n: (-word_match_score(n), len(n)))
-
-            # Step 2: Always add fuzzy matches too
-            fuzzy_matches = process.extract(
-                search_query,
-                CLIMATE_NAMES,
-                scorer=fuzz.WRatio,
-                limit=20,
-                score_cutoff=40
-            )
-            fuzzy_names = [match[0] for match in fuzzy_matches]
-
-            # Combine: word matches first, then fuzzy (no duplicates), limit to 15
-            candidate_names = contains_matches[:10] + [n for n in fuzzy_names if n not in contains_matches]
-            candidate_names = candidate_names[:15]
-
-            # Determine confidence: word match exists OR fuzzy score > 70
-            best_fuzzy_score = fuzzy_matches[0][1] if fuzzy_matches else 0
-            is_confident = len(contains_matches) > 0 or best_fuzzy_score >= 70
-
-            processed_list.append({
-                "original_line": line,
-                "amount": amt,
-                "unit": unit,
-                "query": search_query,
-                "candidates": candidate_names,
-                "confident": is_confident
-            })
-    return processed_list
 
 @app.route('/')
 def explore():
@@ -287,7 +174,7 @@ def scrape():
             pass
 
         # Process ingredients and go straight to review page
-        ingredients_with_matches = get_processed_ingredients(ingredients)
+        ingredients_with_matches = parse_ingredients(ingredients, CLIMATE_NAMES)
         for item in ingredients_with_matches:
             raw_unit = item['unit'].lower().strip() if item['unit'] else ""
             item['unit'] = UNIT_MAP.get(raw_unit, raw_unit)
@@ -326,7 +213,7 @@ def summary():
         original_ingredients = raw_ingredients
 
     # Run the processing logic
-    ingredients_with_matches = get_processed_ingredients(raw_ingredients)
+    ingredients_with_matches = parse_ingredients(raw_ingredients, CLIMATE_NAMES)
 
     # Standardize units in the processed ingredients
     for item in ingredients_with_matches:
