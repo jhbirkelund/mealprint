@@ -31,7 +31,7 @@
         "milk": {
             "density": 1.03,
             "keywords": ["milk"],
-            "exclude": ["coconut milk", "oat milk", "almond milk"]
+            "exclude": ["coconut milk", "oat milk", "almond milk", "cheese", "soymilk", "buttermilk"]
         },
         "cream": {
             "density": 1.01,
@@ -79,7 +79,8 @@
         },
         "dried_herbs": {
             "density": 0.20,
-            "keywords": ["oregano", "thyme", "marjoram", "bay, leaves", "basil, dried", "parsley, dried", "rosemary, dried", "sage, dried", "dill, dried", "tarragon, dried"]
+            "keywords": ["oregano", "thyme", "marjoram", "bay, leaves", "basil, dried", "parsley, dried", "rosemary, dried", "sage, dried", "dill, dried", "tarragon, dried"],
+            "exclude": ["fresh"]
         },
         "fresh_herbs": {
             "density": 0.07,

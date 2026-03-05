@@ -241,6 +241,7 @@ Import only: pandas, openpyxl
 - Add OG meta tags per recipe page (title, description, image) for link previews when shared
 - ✅ Mobile UX review — sort button touch targets, ingredient name overflow, delete button padding
 - 404 and 500 error pages that match the site design
+- White paper: Ingredient Matching Logic (`/resources/matching`) — explains the matching pipeline (NLP parse → alias lookup → fuzzy match → AI fallback), lists all aliases from `config/ingredient_aliases.json` (rendered dynamically), and documents approximations made where DB entries are missing. Fits alongside the existing density white paper.
 
 **Recipe Verification Tool:**
 - ✅ `verify_recipes.py` — terminal script, picks N random unverified published recipes, fetches source URLs, shows side-by-side stored vs. live ingredient comparison, marks all as `under_review`

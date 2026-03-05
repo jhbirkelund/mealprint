@@ -128,10 +128,26 @@ def parse_ingredients(raw_text_block, climate_names=None):
                 break
 
         parsed = parse_ingredient(line)
-        # NLP extracts clean ingredient name (strips prep notes, adjectives, size modifiers)
-        search_query = " ".join(n.text for n in parsed.name).split(',')[0].strip() if parsed.name else line
+        # NLP extracts clean ingredient name. Use only the first (highest-confidence) name
+        # token — joining all tokens would include "or X or Y" alternatives as part of the
+        # search query, causing wrong alias matches (e.g. "coconut oil or olive oil" → olive).
+        search_query = parsed.name[0].text.split(',')[0].strip() if parsed.name else line
         if parsed.amount:
-            qty_str = str(parsed.amount[0].quantity or '1')
+            # Prefer an explicit metric weight (g/kg) in parentheses over a volume measurement.
+            # e.g. "1 cup Manchego cheese (120 grams)" → use 120g, not 1 cup.
+            # Exception: don't override when primary is a MULTIPLIER ("2 x 400g cans") —
+            # in that case the gram value is the container size, not the total ingredient weight.
+            WEIGHT_UNITS = {'gram', 'grams', 'g', 'kilogram', 'kilograms', 'kg'}
+            chosen = parsed.amount[0]
+            if not chosen.MULTIPLIER:
+                for amt_candidate in parsed.amount[1:]:
+                    # Some amount types (CompositeIngredientAmount) lack a unit attribute
+                    unit_raw = str(getattr(amt_candidate, 'unit', None) or '').lower()
+                    prepared = getattr(amt_candidate, 'PREPARED_INGREDIENT', True)
+                    if unit_raw in WEIGHT_UNITS and not prepared:
+                        chosen = amt_candidate
+                        break
+            qty_str = str(chosen.quantity or '1')
             if '-' in qty_str:  # ranges like "2-3" → take lower bound
                 qty_str = qty_str.split('-')[0]
             try:
@@ -142,7 +158,7 @@ def parse_ingredients(raw_text_block, climate_names=None):
                     amt = float(qty_str)
             except (ValueError, ZeroDivisionError):
                 amt = 1
-            unit_text = str(parsed.amount[0].unit or 'piece').lower()
+            unit_text = str(chosen.unit or 'piece').lower()
             unit = UNIT_MAP.get(unit_text, unit_text)
         else:
             # No quantity found - default to 1 piece (e.g., "salt", "pepper to taste")
@@ -160,11 +176,11 @@ def parse_ingredients(raw_text_block, climate_names=None):
                 break
 
         # Step 1: Token-based contains matching
-        search_words = [w.lower() for w in search_query.split() if len(w) > 3]
+        search_words = [w.lower() for w in search_query.split() if len(w) >= 3]
 
         def word_match_score(name):
             name_lower = name.lower()
-            name_words = [w for w in name_lower.replace(',', '').split() if len(w) > 3]
+            name_words = [w for w in name_lower.replace(',', '').split() if len(w) >= 3]
             score = 0
             for sw in search_words:
                 if sw in name_lower:

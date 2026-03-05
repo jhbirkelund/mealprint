@@ -16,6 +16,7 @@ CONVERSIONS = {
     "units": _units_config['conversions'],
     "ingredients": _units_config['ingredient_weights']
 }
+CAN_WEIGHTS = _units_config.get('can_weights', {})
 UNIT_MAP = _units_config['unit_map']
 
 # Load ingredient aliases
@@ -78,21 +79,21 @@ def get_weight_in_grams(amount, unit, ingredient_name="", original_name=""):
         return ml_value * density
 
     # Weight units (g, kg, lb, oz): direct conversion
-    if clean_unit in CONVERSIONS["units"] and clean_unit not in ["piece", "pcs", "unit", "handful", "sprinkling"]:
+    if clean_unit in CONVERSIONS["units"] and clean_unit not in ["piece", "pcs", "unit", "handful", "sprinkling", "sprig"]:
         return amount * CONVERSIONS["units"][clean_unit]
 
-    # Fixed weight units (handful, sprinkling) - no density needed
-    if clean_unit in ["handful", "sprinkling"]:
+    # Fixed weight units (handful, sprinkling, sprig) - no density needed
+    if clean_unit in ["handful", "sprinkling", "sprig"]:
         return amount * CONVERSIONS["units"][clean_unit]
 
     # Piece units: lookup ingredient weight.
     # Sort keys longest-first so specific entries ("egg yolk") win over general ones ("egg").
     if clean_unit in ["piece", "pcs", "unit", "can"]:
-        # Cans: check for ingredient-specific can weight first, then fall back to 400g
+        # Cans: check ingredient-specific can weights (e.g. tuna=150g), else default 400g
         if clean_unit == "can":
-            for key in sorted(CONVERSIONS["ingredients"].keys(), key=len, reverse=True):
+            for key in sorted(CAN_WEIGHTS.keys(), key=len, reverse=True):
                 if key in lookup_name or key in name:
-                    return amount * CONVERSIONS["ingredients"][key]
+                    return amount * CAN_WEIGHTS[key]
             return amount * CONVERSIONS["ingredients"].get("can", 400)
         for key in sorted(CONVERSIONS["ingredients"].keys(), key=len, reverse=True):
             if key in lookup_name or key in name:
