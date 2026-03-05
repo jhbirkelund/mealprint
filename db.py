@@ -79,6 +79,10 @@ def init_db():
                           WHERE table_name='recipes' AND column_name='verification_status') THEN
                 ALTER TABLE recipes ADD COLUMN verification_status TEXT DEFAULT 'unverified';
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='verification_notes') THEN
+                ALTER TABLE recipes ADD COLUMN verification_notes JSONB;
+            END IF;
         END $$;
     ''')
 
@@ -1176,11 +1180,11 @@ def set_verification_status(recipe_id, status):
 
 
 def get_under_review_recipes():
-    """Get published recipes flagged as under_review."""
+    """Get published recipes flagged as under_review, including verification diff."""
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute('''
-        SELECT id, name, source, domain, co2_per_serving, created_at
+        SELECT id, name, source, domain, co2_per_serving, created_at, verification_notes
         FROM recipes
         WHERE is_published = TRUE AND verification_status = 'under_review'
         ORDER BY created_at DESC
@@ -1189,3 +1193,68 @@ def get_under_review_recipes():
     cur.close()
     conn.close()
     return recipes
+
+
+def save_verification_notes(recipe_id, notes):
+    """Store verification diff JSON on the recipe."""
+    import json
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'UPDATE recipes SET verification_notes = %s WHERE id = %s',
+        (json.dumps(notes), recipe_id)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_stored_ingredients_for_verification(recipe_id):
+    """Return stored ingredients with DB row IDs for update during verification."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('''
+        SELECT id, original_line, item, amount, unit, grams, co2, source_db, density_applied
+        FROM recipe_ingredients
+        WHERE recipe_id = %s
+        ORDER BY id
+    ''', (recipe_id,))
+    rows = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return rows
+
+
+def update_ingredient_for_verification(ing_id, item, amount, unit, grams, co2, source_db, density_applied):
+    """Overwrite a recipe_ingredients row with freshly calculated values."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        UPDATE recipe_ingredients
+        SET item = %s, amount = %s, unit = %s, grams = %s,
+            co2 = %s, source_db = %s, density_applied = %s,
+            matched_by = 'verified'
+        WHERE id = %s
+    ''', (item, amount, unit, grams, co2, source_db, density_applied, ing_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def update_recipe_totals_after_verification(recipe_id):
+    """Recalculate total_co2 and co2_per_serving from ingredient rows after verification."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('SELECT co2, grams FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
+    ings = cur.fetchall()
+    total_co2 = sum(i['co2'] or 0 for i in ings)
+    cur.execute('SELECT servings FROM recipes WHERE id = %s', (recipe_id,))
+    recipe = cur.fetchone()
+    servings = recipe['servings'] if recipe and recipe['servings'] else 1
+    co2_per_serving = total_co2 / servings
+    cur.execute('''
+        UPDATE recipes SET total_co2 = %s, co2_per_serving = %s WHERE id = %s
+    ''', (round(total_co2, 3), round(co2_per_serving, 3), recipe_id))
+    conn.commit()
+    cur.close()
+    conn.close()

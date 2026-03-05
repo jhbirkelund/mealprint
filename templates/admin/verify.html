@@ -6,65 +6,153 @@
 <div class="flex items-center justify-between mb-6">
     <div>
         <h1 class="text-2xl font-semibold text-slate-900">Verify Queue</h1>
-        <p class="text-sm text-slate-500 mt-1">Recipes flagged by <code>verify_recipes.py</code> that need manual checking.</p>
+        <p class="text-sm text-slate-500 mt-1">Auto-corrected by <code>verify_recipes.py</code>. Review diffs and sign off.</p>
     </div>
 </div>
 
 {% if recipes %}
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        <table class="w-full">
-            <thead class="bg-slate-50 border-b border-slate-200">
-                <tr>
-                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600">Recipe</th>
-                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600">CO2/serving</th>
-                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600">Source</th>
-                    <th class="text-left px-4 py-3 text-sm font-medium text-slate-600"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-100">
-                {% for recipe in recipes %}
-                <tr class="hover:bg-slate-50">
-                    <td class="px-4 py-3">
-                        <div class="font-medium text-slate-900">{{ recipe.name }}</div>
-                        <div class="text-xs text-slate-400 font-mono mt-0.5">{{ recipe.id }}</div>
-                    </td>
-                    <td class="px-4 py-3">
-                        {% if recipe.co2_per_serving %}
-                            {% if recipe.co2_per_serving < 1.0 %}
-                                <span class="text-emerald-600 font-medium">{{ "%.2f"|format(recipe.co2_per_serving) }} kg</span>
-                            {% elif recipe.co2_per_serving < 1.8 %}
-                                <span class="text-amber-600 font-medium">{{ "%.2f"|format(recipe.co2_per_serving) }} kg</span>
-                            {% else %}
-                                <span class="text-rose-600 font-medium">{{ "%.2f"|format(recipe.co2_per_serving) }} kg</span>
+    <div class="space-y-4">
+        {% for recipe in recipes %}
+        {% set notes = recipe.verification_notes or {} %}
+        {% set changes = notes.get('changes', []) %}
+        {% set issues = notes.get('issues', []) %}
+        {% set fetch_error = notes.get('fetch_error') %}
+        {% set live_count = notes.get('live_count') %}
+        {% set stored_count = notes.get('stored_count') %}
+        {% set count_mismatch = live_count and stored_count and (live_count - stored_count) | abs > 2 %}
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+
+            {# --- Header row --- #}
+            <div class="flex items-center justify-between px-5 py-4">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <span class="font-medium text-slate-900">{{ recipe.name }}</span>
+
+                        {# Status badges #}
+                        {% if fetch_error %}
+                            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">Fetch error</span>
+                        {% else %}
+                            {% if changes %}
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">{{ changes|length }} corrected</span>
                             {% endif %}
-                        {% else %}
-                            <span class="text-slate-400">-</span>
+                            {% if issues %}
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">{{ issues|length }} issue{{ 's' if issues|length != 1 }}</span>
+                            {% endif %}
+                            {% if not changes and not issues %}
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">No changes</span>
+                            {% endif %}
+                            {% if count_mismatch %}
+                                <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Count mismatch (live {{ live_count }}, stored {{ stored_count }})</span>
+                            {% endif %}
                         {% endif %}
-                    </td>
-                    <td class="px-4 py-3 text-sm text-slate-500 max-w-xs truncate">
+                    </div>
+
+                    <div class="flex items-center gap-4 mt-1 text-xs text-slate-400">
+                        {% if recipe.co2_per_serving %}
+                            <span>{{ "%.2f"|format(recipe.co2_per_serving) }} kg CO₂/serving</span>
+                        {% endif %}
                         {% if recipe.source %}
-                            <a href="{{ recipe.source }}" target="_blank" class="hover:text-emerald-600 truncate block">{{ recipe.domain or recipe.source }}</a>
-                        {% else %}
-                            -
+                            <a href="{{ recipe.source }}" target="_blank" class="hover:text-emerald-600 truncate max-w-xs">{{ recipe.domain or recipe.source }}</a>
                         {% endif %}
-                    </td>
-                    <td class="px-4 py-3 text-right">
-                        <div class="flex items-center justify-end gap-3">
-                            <a href="{{ url_for('admin.review_recipe', recipe_id=recipe.id) }}"
-                                class="text-slate-600 hover:text-slate-900 text-sm font-medium">Edit</a>
-                            <form method="POST" action="{{ url_for('admin.mark_verified', recipe_id=recipe.id) }}" class="inline">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="text-emerald-600 hover:text-emerald-800 text-sm font-medium">
-                                    Mark Verified
-                                </button>
-                            </form>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        {% if notes.get('run_at') %}
+                            <span>Checked {{ notes.run_at[:10] }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 ml-4 shrink-0">
+                    <a href="{{ url_for('admin.review_recipe', recipe_id=recipe.id) }}"
+                       class="text-slate-500 hover:text-slate-800 text-sm font-medium">Edit</a>
+                    <form method="POST" action="{{ url_for('admin.mark_verified', recipe_id=recipe.id) }}" class="inline">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg">
+                            Mark Verified
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {# --- Fetch error detail --- #}
+            {% if fetch_error %}
+            <div class="border-t border-slate-100 px-5 py-3 bg-rose-50">
+                <p class="text-sm text-rose-700 font-mono">{{ fetch_error }}</p>
+            </div>
+
+            {# --- Diffs and issues --- #}
+            {% elif changes or issues %}
+            <div class="border-t border-slate-100">
+
+                {# Auto-corrections table #}
+                {% if changes %}
+                <div class="px-5 py-3">
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Auto-corrected</p>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-xs text-slate-400 border-b border-slate-100">
+                                <th class="text-left pb-1 font-medium w-1/3">Ingredient line</th>
+                                <th class="text-left pb-1 font-medium">Match</th>
+                                <th class="text-right pb-1 font-medium">Grams</th>
+                                <th class="text-right pb-1 font-medium">CO₂</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            {% for c in changes %}
+                            <tr>
+                                <td class="py-1.5 pr-4 text-slate-500 truncate max-w-xs font-mono text-xs">{{ c.line }}</td>
+                                <td class="py-1.5 pr-4">
+                                    {% if c.old_item != c.new_item %}
+                                        <span class="line-through text-slate-400 text-xs mr-1">{{ c.old_item or '?' }}</span>
+                                        <span class="text-emerald-700 font-medium">{{ c.new_item }}</span>
+                                    {% else %}
+                                        <span class="text-slate-600">{{ c.new_item }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-1.5 pr-4 text-right whitespace-nowrap">
+                                    {% if c.old_grams != c.new_grams %}
+                                        <span class="line-through text-slate-400 text-xs mr-1">{{ c.old_grams|int if c.old_grams else '?' }}g</span>
+                                        <span class="text-emerald-700 font-medium">{{ c.new_grams|int }}g</span>
+                                    {% else %}
+                                        <span class="text-slate-500">{{ c.new_grams|int }}g</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-1.5 text-right whitespace-nowrap">
+                                    {% if c.old_co2 is not none and c.new_co2 is not none and (c.old_co2 - c.new_co2)|abs > 0.001 %}
+                                        <span class="line-through text-slate-400 text-xs mr-1">{{ "%.3f"|format(c.old_co2) }}</span>
+                                        <span class="text-emerald-700 font-medium">{{ "%.3f"|format(c.new_co2) }}</span>
+                                    {% else %}
+                                        <span class="text-slate-500">{{ "%.3f"|format(c.new_co2) if c.new_co2 is not none else '-' }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                {# Issues table #}
+                {% if issues %}
+                <div class="px-5 py-3 {% if changes %}border-t border-slate-100{% endif %} bg-amber-50">
+                    <p class="text-xs font-semibold text-amber-600 uppercase tracking-wide mb-2">Issues (needs attention)</p>
+                    <ul class="space-y-1">
+                        {% for iss in issues %}
+                        <li class="text-sm flex gap-2">
+                            <span class="font-mono text-xs text-slate-500 shrink-0 pt-0.5">{{ iss.line[:50] }}</span>
+                            <span class="text-amber-800">— {{ iss.detail }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
+            </div>
+            {% endif %}
+
+        </div>
+        {% endfor %}
     </div>
+
 {% else %}
     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8 text-center">
         <p class="text-slate-500">No recipes flagged for review. Run <code class="bg-slate-100 px-1.5 py-0.5 rounded text-sm">python verify_recipes.py</code> to check a batch.</p>

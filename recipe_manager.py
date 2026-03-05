@@ -88,8 +88,11 @@ def get_weight_in_grams(amount, unit, ingredient_name="", original_name=""):
     # Piece units: lookup ingredient weight.
     # Sort keys longest-first so specific entries ("egg yolk") win over general ones ("egg").
     if clean_unit in ["piece", "pcs", "unit", "can"]:
-        # Cans always use standard can weight (400g), not the ingredient's piece weight
+        # Cans: check for ingredient-specific can weight first, then fall back to 400g
         if clean_unit == "can":
+            for key in sorted(CONVERSIONS["ingredients"].keys(), key=len, reverse=True):
+                if key in lookup_name or key in name:
+                    return amount * CONVERSIONS["ingredients"][key]
             return amount * CONVERSIONS["ingredients"].get("can", 400)
         for key in sorted(CONVERSIONS["ingredients"].keys(), key=len, reverse=True):
             if key in lookup_name or key in name:

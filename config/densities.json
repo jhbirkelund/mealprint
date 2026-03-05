@@ -88,6 +88,11 @@
         "grated_cheese": {
             "density": 0.35,
             "keywords": ["parmesan", "pecorino", "romano"]
+        },
+        "leafy_vegetables": {
+            "density": 0.30,
+            "keywords": ["kale", "cabbage", "spinach", "chard", "collard"],
+            "exclude": ["turnip cabbage", "sauerkraut"]
         }
     },
     "default_density": 1.0
