@@ -1,9 +1,20 @@
+import os
+
+# Sentry error monitoring — disabled until real users go live.
+# To activate: uncomment below, add SENTRY_DSN env var in Render dashboard.
+# import sentry_sdk
+# from sentry_sdk.integrations.flask import FlaskIntegration
+# sentry_sdk.init(
+#     dsn=os.environ.get('SENTRY_DSN'),
+#     integrations=[FlaskIntegration()],
+#     traces_sample_rate=0,
+# )
+
 from flask import Flask, request, render_template, redirect, session, url_for
 from flask_wtf.csrf import CSRFProtect
 from functools import wraps
 from extensions import limiter
 import json
-import os
 from recipe_manager import UNIT_MAP, INGREDIENT_ALIASES, CONVERSIONS, DENSITIES, get_weight_in_grams, calculate_rating, get_density_category
 from recipe_scrapers import scrape_me
 from rapidfuzz import process, fuzz
@@ -675,6 +686,11 @@ def privacy():
 @app.route('/terms')
 def terms():
     return render_template('terms.html')
+
+@app.route('/health')
+def health():
+    return {'status': 'ok'}, 200
+
 
 @app.errorhandler(500)
 def internal_error(e):

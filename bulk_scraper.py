@@ -390,6 +390,165 @@ def process_import_job(job_id):
         time.sleep(RATE_LIMIT_SECONDS)
 
 
+# --- Single-recipe background workers ---
+
+def process_rescrape_job(job_id, recipe_id):
+    """
+    Background worker: re-scrape a recipe from its source URL.
+    Called in a thread from the admin route.
+    """
+    import re
+    from db import get_recipe_by_id, get_connection, complete_recipe_job, fail_recipe_job
+    from ingredient_matcher import parse_ingredients, load_climate_names
+    from mistral_matcher import mistral_match_batch, is_mistral_available
+
+    try:
+        recipe = get_recipe_by_id(recipe_id)
+        if not recipe:
+            fail_recipe_job(job_id, 'Recipe not found')
+            return
+
+        source_url = recipe.get('source')
+        if not source_url:
+            fail_recipe_job(job_id, 'Recipe has no source URL')
+            return
+
+        # Scrape fresh data
+        scraper = scrape_me(source_url)
+        new_name = scraper.title() or recipe['name']
+        new_servings_raw = scraper.yields() or str(recipe['servings'])
+        servings_match = re.search(r'\d+', str(new_servings_raw))
+        new_servings = float(servings_match.group()) if servings_match else recipe['servings']
+
+        ingredients_list = scraper.ingredients()
+        new_original_ingredients = "\n".join(ingredients_list)
+
+        # Parse and fuzzy-match ingredients
+        climate_names = load_climate_names()
+        parsed_ingredients = parse_ingredients(new_original_ingredients, climate_names)
+
+        # Batch AI matching for low-confidence results
+        ai_matches = {}
+        if is_mistral_available():
+            low_confidence = [
+                {'original_line': ing['original_line'], 'candidates': ing['candidates'][:20]}
+                for ing in parsed_ingredients
+                if not ing['confident'] and ing['candidates']
+            ]
+            if low_confidence:
+                ai_matches = mistral_match_batch(low_confidence)
+
+        # Write to DB
+        conn = get_connection()
+        cur = conn.cursor()
+
+        cur.execute('''
+            UPDATE recipes SET name = %s, servings = %s, original_ingredients = %s
+            WHERE id = %s
+        ''', (new_name, new_servings, new_original_ingredients, recipe_id))
+
+        cur.execute('DELETE FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
+
+        mistral_count = 0
+        for ing in parsed_ingredients:
+            matched_item = ing['candidates'][0] if ing['candidates'] else ''
+            matched_by = 'fuzzy'
+
+            if ing['original_line'] in ai_matches and ai_matches[ing['original_line']]:
+                matched_item = ai_matches[ing['original_line']]['match']
+                matched_by = 'mistral'
+                mistral_count += 1
+
+            cur.execute('''
+                INSERT INTO recipe_ingredients
+                    (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (
+                recipe_id,
+                ing['original_line'],
+                matched_item,
+                ing['amount'],
+                ing['unit'],
+                ing['grams'],
+                ing['co2'],
+                ing['source_db'],
+                matched_by,
+                ing.get('density_applied')
+            ))
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        ai_msg = f' ({mistral_count} matched by AI)' if mistral_count > 0 else ''
+        complete_recipe_job(job_id, f'Re-scraped successfully. {len(parsed_ingredients)} ingredients found{ai_msg}.')
+
+    except Exception as e:
+        fail_recipe_job(job_id, f'Re-scrape failed: {str(e)}')
+
+
+def process_ai_rematch_job(job_id, recipe_id):
+    """
+    Background worker: re-match all ingredients using Mistral AI.
+    Called in a thread from the admin route.
+    """
+    from db import get_recipe_by_id, get_connection, complete_recipe_job, fail_recipe_job
+    from ingredient_matcher import parse_ingredients, load_climate_names
+    from mistral_matcher import mistral_match_batch
+
+    try:
+        recipe = get_recipe_by_id(recipe_id)
+        if not recipe:
+            fail_recipe_job(job_id, 'Recipe not found')
+            return
+
+        climate_names = load_climate_names()
+        ingredients_to_match = []
+
+        for ing in recipe['ingredients']:
+            original_line = ing.get('original_line', '')
+            if not original_line or original_line == '(manually added)':
+                continue
+            parsed = parse_ingredients(original_line, climate_names)
+            if not parsed or not parsed[0]['candidates']:
+                continue
+            ingredients_to_match.append({
+                'original_line': original_line,
+                'candidates': parsed[0]['candidates'][:20]
+            })
+
+        if not ingredients_to_match:
+            complete_recipe_job(job_id, 'No ingredients to re-match.')
+            return
+
+        ai_matches = mistral_match_batch(ingredients_to_match)
+
+        conn = get_connection()
+        cur = conn.cursor()
+
+        mistral_count = 0
+        for original_line, result in ai_matches.items():
+            if result and result.get('match'):
+                cur.execute('''
+                    UPDATE recipe_ingredients
+                    SET item = %s, matched_by = 'mistral'
+                    WHERE recipe_id = %s AND original_line = %s
+                ''', (result['match'], recipe_id, original_line))
+                mistral_count += 1
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        if mistral_count > 0:
+            complete_recipe_job(job_id, f'AI re-matched {mistral_count} ingredients.')
+        else:
+            complete_recipe_job(job_id, 'No ingredients were updated by AI.')
+
+    except Exception as e:
+        fail_recipe_job(job_id, f'AI re-match failed: {str(e)}')
+
+
 def main():
     """CLI entry point."""
     if len(sys.argv) < 2:

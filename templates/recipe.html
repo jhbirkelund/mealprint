@@ -2,6 +2,22 @@
 
 {% block title %}{{ recipe.name }} - Mealprint{% endblock %}
 
+{% block head %}
+<meta property="og:type" content="website">
+<meta property="og:title" content="{{ recipe.name }} - Mealprint">
+<meta property="og:description" content="{{ '%.2f'|format(recipe.co2_per_serving) }} kg CO₂ per serving · {{ recipe.rating.label if recipe.rating else 'See carbon footprint on Mealprint' }}">
+<meta property="og:url" content="{{ request.url }}">
+{% if recipe.og_image_url and recipe.og_image_url != 'None' %}
+<meta property="og:image" content="{{ recipe.og_image_url }}">
+{% endif %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ recipe.name }} - Mealprint">
+<meta name="twitter:description" content="{{ '%.2f'|format(recipe.co2_per_serving) }} kg CO₂ per serving · {{ recipe.rating.label if recipe.rating else 'See carbon footprint on Mealprint' }}">
+{% if recipe.og_image_url and recipe.og_image_url != 'None' %}
+<meta name="twitter:image" content="{{ recipe.og_image_url }}">
+{% endif %}
+{% endblock %}
+
 {% block content %}
 <div class="pt-4 md:pt-8">
 

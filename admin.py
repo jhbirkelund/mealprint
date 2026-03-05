@@ -22,7 +22,11 @@ from db import (
     get_connection,
     get_ingredient_by_name,
     get_security_items,
-    update_security_item
+    update_security_item,
+    create_recipe_job,
+    get_job_status,
+    get_under_review_recipes,
+    set_verification_status,
 )
 from recipe_manager import calculate_rating, CONVERSIONS, DENSITIES
 from ingredient_matcher import get_ingredients_for_autocomplete
@@ -419,103 +423,33 @@ def reject_recipe(recipe_id):
 @admin_bp.route('/review/<recipe_id>/rescrape', methods=['POST'])
 @admin_required
 def rescrape_recipe(recipe_id):
-    """Re-scrape recipe data from the original source URL."""
-    from recipe_scrapers import scrape_me
-    from ingredient_matcher import parse_ingredients, load_climate_names
-    import re
+    """Queue a background re-scrape job for this recipe."""
+    import threading
+    from bulk_scraper import process_rescrape_job
 
     recipe = get_recipe_by_id(recipe_id)
     if not recipe:
         flash('Recipe not found', 'error')
         return redirect(url_for('admin.review_queue'))
 
-    source_url = recipe.get('source')
-    if not source_url:
+    if not recipe.get('source'):
         flash('Recipe has no source URL to re-scrape', 'error')
         return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
 
-    try:
-        # Scrape the recipe again
-        scraper = scrape_me(source_url)
+    job_id = create_recipe_job('rescrape', recipe_id)
+    thread = threading.Thread(target=process_rescrape_job, args=(job_id, recipe_id))
+    thread.daemon = True
+    thread.start()
 
-        # Extract data
-        new_name = scraper.title() or recipe['name']
-        new_servings = scraper.yields() or str(recipe['servings'])
-        servings_match = re.search(r'\d+', str(new_servings))
-        new_servings = float(servings_match.group()) if servings_match else recipe['servings']
-
-        ingredients_list = scraper.ingredients()
-        new_original_ingredients = "\n".join(ingredients_list)
-
-        # Parse ingredients with climate matching
-        climate_names = load_climate_names()
-        parsed_ingredients = parse_ingredients(new_original_ingredients, climate_names)
-
-        # Update recipe in database
-        conn = get_connection()
-        cur = conn.cursor()
-
-        cur.execute('''
-            UPDATE recipes SET
-                name = %s,
-                servings = %s,
-                original_ingredients = %s
-            WHERE id = %s
-        ''', (new_name, new_servings, new_original_ingredients, recipe_id))
-
-        # Delete old ingredients and insert new parsed ones
-        cur.execute('DELETE FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
-
-        # Collect low-confidence ingredients for batch AI matching
-        low_confidence_ingredients = []
-        if is_mistral_available():
-            for ing in parsed_ingredients:
-                if not ing['confident'] and ing['candidates']:
-                    low_confidence_ingredients.append({
-                        'original_line': ing['original_line'],
-                        'candidates': ing['candidates'][:20]
-                    })
-
-        # Batch AI matching (single API call instead of one per ingredient)
-        ai_matches = {}
-        if low_confidence_ingredients:
-            ai_matches = mistral_match_batch(low_confidence_ingredients)
-
-        mistral_count = 0
-        for ing in parsed_ingredients:
-            # Use first candidate as the matched item
-            matched_item = ing['candidates'][0] if ing['candidates'] else ''
-            matched_by = 'fuzzy'
-
-            # Check if AI found a better match
-            if ing['original_line'] in ai_matches and ai_matches[ing['original_line']]:
-                matched_item = ai_matches[ing['original_line']]['match']
-                matched_by = 'mistral'
-                mistral_count += 1
-
-            cur.execute('''
-                INSERT INTO recipe_ingredients (recipe_id, original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (recipe_id, ing['original_line'], matched_item, ing['amount'], ing['unit'], 0, 0, '', matched_by, None))
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        ai_msg = f' ({mistral_count} matched by AI)' if mistral_count > 0 else ''
-        flash(f'Recipe re-scraped successfully. {len(parsed_ingredients)} ingredients found{ai_msg}.', 'success')
-
-    except Exception as e:
-        flash(f'Re-scrape failed: {str(e)}', 'error')
-
-    return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
+    return redirect(url_for('admin.review_recipe', recipe_id=recipe_id, job=job_id))
 
 
 @admin_bp.route('/review/<recipe_id>/ai-rematch', methods=['POST'])
 @admin_required
 def ai_rematch_recipe(recipe_id):
-    """Re-match all ingredients using Mistral AI."""
-    from ingredient_matcher import parse_ingredients, load_climate_names
+    """Queue a background AI re-match job for this recipe."""
+    import threading
+    from bulk_scraper import process_ai_rematch_job
 
     if not is_mistral_available():
         flash('Mistral API key not configured. Set MISTRAL_API_KEY environment variable.', 'error')
@@ -526,59 +460,45 @@ def ai_rematch_recipe(recipe_id):
         flash('Recipe not found', 'error')
         return redirect(url_for('admin.review_queue'))
 
-    try:
-        # Load climate names for candidate generation
-        climate_names = load_climate_names()
+    job_id = create_recipe_job('ai_rematch', recipe_id)
+    thread = threading.Thread(target=process_ai_rematch_job, args=(job_id, recipe_id))
+    thread.daemon = True
+    thread.start()
 
-        # Collect all ingredients with their candidates for batch processing
-        ingredients_to_match = []
-        for ing in recipe['ingredients']:
-            original_line = ing.get('original_line', '')
-            if not original_line or original_line == '(manually added)':
-                continue
+    return redirect(url_for('admin.review_recipe', recipe_id=recipe_id, job=job_id))
 
-            # Get candidates using fuzzy matching
-            parsed = parse_ingredients(original_line, climate_names)
-            if not parsed or not parsed[0]['candidates']:
-                continue
 
-            ingredients_to_match.append({
-                'original_line': original_line,
-                'candidates': parsed[0]['candidates'][:20]
-            })
+@admin_bp.route('/jobs/<job_id>/status')
+@admin_required
+def job_status(job_id):
+    """Return JSON status of a job (used by frontend polling)."""
+    from flask import jsonify
+    job = get_job_status(job_id)
+    if not job:
+        return jsonify({'status': 'not_found'}), 404
+    return jsonify({
+        'status': job['status'],
+        'message': job['result_message'] or '',
+        'job_type': job['job_type'],
+        'recipe_id': job['recipe_id'],
+    })
 
-        if not ingredients_to_match:
-            flash('No ingredients to re-match.', 'info')
-            return redirect(url_for('admin.review_recipe', recipe_id=recipe_id))
 
-        # Single batch API call for all ingredients
-        ai_matches = mistral_match_batch(ingredients_to_match)
+@admin_bp.route('/verify')
+@admin_required
+def verify_queue():
+    """List published recipes flagged as under_review after verification."""
+    recipes = get_under_review_recipes()
+    return render_template('admin/verify.html', recipes=recipes)
 
-        # Update database with matches
-        conn = get_connection()
-        cur = conn.cursor()
 
-        mistral_count = 0
-        for original_line, result in ai_matches.items():
-            if result and result.get('match'):
-                cur.execute('''
-                    UPDATE recipe_ingredients
-                    SET item = %s, matched_by = 'mistral'
-                    WHERE recipe_id = %s AND original_line = %s
-                ''', (result['match'], recipe_id, original_line))
-                mistral_count += 1
-
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        if mistral_count > 0:
-            flash(f'AI re-matched {mistral_count} ingredients.', 'success')
-        else:
-            flash('No ingredients were updated by AI.', 'info')
-
-    except Exception as e:
-        flash(f'AI re-match failed: {str(e)}', 'error')
+@admin_bp.route('/review/<recipe_id>/mark-verified', methods=['POST'])
+@admin_required
+def mark_verified(recipe_id):
+    """Mark a recipe as verified after manual review."""
+    set_verification_status(recipe_id, 'verified')
+    flash('Recipe marked as verified.', 'success')
+    return redirect(url_for('admin.verify_queue'))
 
 
 @admin_bp.route('/security')

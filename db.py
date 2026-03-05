@@ -75,6 +75,10 @@ def init_db():
                           WHERE table_name='recipes' AND column_name='recipe_creator') THEN
                 ALTER TABLE recipes ADD COLUMN recipe_creator TEXT;
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns
+                          WHERE table_name='recipes' AND column_name='verification_status') THEN
+                ALTER TABLE recipes ADD COLUMN verification_status TEXT DEFAULT 'unverified';
+            END IF;
         END $$;
     ''')
 
@@ -153,7 +157,7 @@ def init_db():
     cur.execute('CREATE INDEX IF NOT EXISTS idx_climate_name_fr ON climate_ingredients(name_fr)')
     cur.execute('CREATE INDEX IF NOT EXISTS idx_climate_source ON climate_ingredients(source_db)')
 
-    # Create import_jobs table for batch scraping
+    # Create import_jobs table for batch scraping and single-recipe background jobs
     cur.execute('''
         CREATE TABLE IF NOT EXISTS import_jobs (
             id TEXT PRIMARY KEY,
@@ -166,6 +170,11 @@ def init_db():
             completed_at TIMESTAMP
         )
     ''')
+
+    # Add columns for single-recipe jobs (idempotent — safe to run on every startup)
+    cur.execute("ALTER TABLE import_jobs ADD COLUMN IF NOT EXISTS job_type TEXT DEFAULT 'bulk_import'")
+    cur.execute("ALTER TABLE import_jobs ADD COLUMN IF NOT EXISTS recipe_id TEXT")
+    cur.execute("ALTER TABLE import_jobs ADD COLUMN IF NOT EXISTS result_message TEXT")
 
     # Create import_items table for individual URLs in a job
     cur.execute('''
@@ -1012,3 +1021,110 @@ def start_import_job(job_id):
     conn.commit()
     cur.close()
     conn.close()
+
+
+# --- Single-recipe background jobs (rescrape / ai_rematch) ---
+
+def create_recipe_job(job_type, recipe_id):
+    """Create a background job for a single-recipe operation."""
+    import uuid
+    job_id = str(uuid.uuid4())
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        INSERT INTO import_jobs (id, status, job_type, recipe_id, total_urls)
+        VALUES (%s, 'pending', %s, %s, 1)
+    ''', (job_id, job_type, recipe_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return job_id
+
+
+def complete_recipe_job(job_id, message):
+    """Mark a recipe job as completed with a result message."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        UPDATE import_jobs
+        SET status = 'completed', result_message = %s, completed_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+    ''', (message, job_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def fail_recipe_job(job_id, message):
+    """Mark a recipe job as failed with an error message."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        UPDATE import_jobs
+        SET status = 'failed', result_message = %s, completed_at = CURRENT_TIMESTAMP
+        WHERE id = %s
+    ''', (message, job_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_job_status(job_id):
+    """Get status and result of any job by ID."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('''
+        SELECT id, status, job_type, recipe_id, result_message
+        FROM import_jobs WHERE id = %s
+    ''', (job_id,))
+    job = cur.fetchone()
+    cur.close()
+    conn.close()
+    return dict(job) if job else None
+
+
+# --- Recipe verification ---
+
+def get_unverified_recipes(limit=10):
+    """Get random published recipes that haven't been verified yet."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('''
+        SELECT id, name, source, co2_per_serving
+        FROM recipes
+        WHERE is_published = TRUE
+          AND source IS NOT NULL AND source != ''
+          AND (verification_status = 'unverified' OR verification_status IS NULL)
+        ORDER BY RANDOM()
+        LIMIT %s
+    ''', (limit,))
+    recipes = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return recipes
+
+
+def set_verification_status(recipe_id, status):
+    """Set verification_status on a recipe."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('UPDATE recipes SET verification_status = %s WHERE id = %s', (status, recipe_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_under_review_recipes():
+    """Get published recipes flagged as under_review."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    cur.execute('''
+        SELECT id, name, source, domain, co2_per_serving, created_at
+        FROM recipes
+        WHERE is_published = TRUE AND verification_status = 'under_review'
+        ORDER BY created_at DESC
+    ''')
+    recipes = [dict(r) for r in cur.fetchall()]
+    cur.close()
+    conn.close()
+    return recipes
