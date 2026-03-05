@@ -232,21 +232,22 @@ Import only: pandas, openpyxl
 **Technical debt to clear:**
 - ✅ Replace `quantulum3` with `ingredient-parser-nlp` — NLP/CRF model, much better accuracy on long ingredient descriptions; lazy-loaded for fast startup
 - ✅ Fix unit mapping bugs — clove, head, stalk, slice, sprig now mapped; can weight fixed (always 400g); broccoli/cauliflower/cabbage/lettuce weights added
-- Fix rescrape & AI re-match timeouts — move to background jobs (same pattern as bulk import — queue a job, poll for completion); affects "Rescrape" and "AI Re-match" buttons in admin
+- ✅ Fix rescrape & AI re-match background jobs — stale cleanup now catches `pending/running/processing`; rescrape was crashing with KeyError (missing grams/co2 keys); now calls `calculate_ingredient()` and updates recipe totals
+- ✅ Remove duplicate ingredient parsing — `get_processed_ingredients()` in `manual_app.py` was a diverged copy of `parse_ingredients()` in `ingredient_matcher.py`; deleted and replaced with shared function
+- ✅ Fix Danish names in ingredient matching — `manual_app.py` was building its own `CLIMATE_NAMES` list including `name_dk`; now EN + FR only (same as `ingredient_matcher.py`)
 
 **Content & UX:**
 - Build up recipe database to ~200+ quality published recipes across categories
 - Add OG meta tags per recipe page (title, description, image) for link previews when shared
-- Review mobile UX end-to-end — the primary use case is looking up a recipe on your phone
+- ✅ Mobile UX review — sort button touch targets, ingredient name overflow, delete button padding
 - 404 and 500 error pages that match the site design
 
 **Recipe Verification Tool:**
-- Terminal script (`verify_recipes.py`) — picks 10 random `unverified` published recipes, fetches each original URL, uses Claude (Anthropic API) to compare against stored data
-- Terminal output: summary only — "Checked 10 — 7 verified, 3 flagged for review"
-- DB: add `verification_status` column to `recipes` (values: `unverified` / `under_review` / `verified`, default `unverified`)
-- Admin: `/admin/review` list filtered to `under_review` recipes — admin manually checks, fixes, and marks as `verified`
-- New dependency: `anthropic` Python package + `ANTHROPIC_API_KEY` env var
-- Long-term path: shifts human review from all recipes → flagged-only
+- ✅ `verify_recipes.py` — terminal script, picks N random unverified published recipes, fetches source URLs, shows side-by-side stored vs. live ingredient comparison, marks all as `under_review`
+- ✅ DB: `verification_status` column on `recipes` (`unverified` / `under_review` / `verified`)
+- ✅ Admin: `/admin/verify` — lists `under_review` recipes for manual check and sign-off
+- Run with: `DATABASE_URL="..." python3 verify_recipes.py --count 10`
+- `ingredient_issues.md` — running list of matching/weight/density bugs found during verification; fix in bulk sessions
 
 **Monitoring:**
 - Add basic error monitoring (Sentry free tier) so crashes surface without users reporting them
