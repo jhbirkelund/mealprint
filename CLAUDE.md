@@ -144,6 +144,7 @@ Import only: pandas, openpyxl
 | `/recipe/<id>` | Recipe detail with CO2 breakdown |
 | `/resources` | White papers index (methodology documentation) |
 | `/resources/density` | Density conversion white paper |
+| `/resources/matching` | Ingredient matching white paper (planned) |
 | `/about-rating` | Carbon rating system explanation |
 
 ## Roadmap
@@ -235,13 +236,44 @@ Import only: pandas, openpyxl
 - ✅ Fix rescrape & AI re-match background jobs — stale cleanup now catches `pending/running/processing`; rescrape was crashing with KeyError (missing grams/co2 keys); now calls `calculate_ingredient()` and updates recipe totals
 - ✅ Remove duplicate ingredient parsing — `get_processed_ingredients()` in `manual_app.py` was a diverged copy of `parse_ingredients()` in `ingredient_matcher.py`; deleted and replaced with shared function
 - ✅ Fix Danish names in ingredient matching — `manual_app.py` was building its own `CLIMATE_NAMES` list including `name_dk`; now EN + FR only (same as `ingredient_matcher.py`)
+- ✅ Ingredient matching accuracy pass — batch verification run surfaced ~20 bugs; fixed: word_match_score filter (>3 → >=3 to include short words like "red"/"soy"), first-name-only NLP token (no "or X or Y" pollution), explicit gram override for parenthetical weights ("1 cup (120g)"), MULTIPLIER guard for "2 x 400g cans", safe `getattr` for CompositeIngredientAmount, sprig as fixed-weight unit, CAN_WEIGHTS dict, substring false match ("tin" in "white"), hvidløg Danish alias, lasagna noodle piece weight, oil/wine/vinegar alias targets corrected, lemongrass, pumpkin seeds, dried_herbs density exclusions, cheese out of milk density
 
 **Content & UX:**
 - Build up recipe database to ~200+ quality published recipes across categories
 - Add OG meta tags per recipe page (title, description, image) for link previews when shared
 - ✅ Mobile UX review — sort button touch targets, ingredient name overflow, delete button padding
 - 404 and 500 error pages that match the site design
-- White paper: Ingredient Matching Logic (`/resources/matching`) — explains the matching pipeline (NLP parse → alias lookup → fuzzy match → AI fallback), lists all aliases from `config/ingredient_aliases.json` (rendered dynamically), and documents approximations made where DB entries are missing. Fits alongside the existing density white paper.
+
+**White paper: Ingredient Matching Logic** (`/resources/matching`)
+
+Sits alongside the existing density white paper at `/resources/density`. Explains how Mealprint maps free-text recipe ingredients to the climate database, and why approximations are made where exact entries don't exist. All tables rendered live from the config files — no hardcoding.
+
+Page structure:
+1. **How the pipeline works** — step-by-step prose:
+   - NLP parse (ingredient-parser-nlp extracts amount, unit, clean name — strips prep notes like "finely chopped")
+   - Informal unit preprocessing (handful → 30g, knivspids → 0.5g, stk → 1 piece)
+   - Alias lookup (longest-match substring against `config/ingredient_aliases.json`)
+   - Hybrid matching: token word score + rapidfuzz WRatio against all DB names
+   - Confidence threshold (word score ≥ 4 AND fuzzy ≥ 92%) — below triggers Mistral AI fallback
+
+2. **Ingredient aliases table** — rendered live from `config/ingredient_aliases.json`
+   Columns: Recipe term | Matched to in DB | Notes
+   Grouped by category (dairy, oils, herbs, spices, pasta, etc.)
+   Explains why approximations are used ("no Manchego in DB → nearest hard cheese")
+
+3. **Piece weights table** — rendered live from `config/units.json` → `ingredient_weights`
+   Columns: Ingredient | Weight per piece | Example
+   Explains: when an ingredient has no volume unit (e.g. "2 eggs", "3 garlic cloves"), we look up a standard piece weight
+
+4. **Density categories table** — rendered live from `config/densities.json`
+   Columns: Category | Density (g/ml) | Applies to | Excludes
+   Explains: volume measurements (1 cup flour) use ingredient-specific density, not water (1.0 g/ml)
+
+5. **Limitations & methodology note**
+   - Some ingredients have no close DB match — we use the nearest proxy (e.g. dried tarragon → oregano, dried)
+   - Can weights default to 400g; tuna/sardine/anchovy use known sizes
+   - Piece weights are population averages — actual ingredient size varies
+   - Link to density white paper and `/about-rating`
 
 **Recipe Verification Tool:**
 - ✅ `verify_recipes.py` — terminal script, picks N random unverified published recipes, fetches source URLs, shows side-by-side stored vs. live ingredient comparison, marks all as `under_review`
