@@ -78,10 +78,12 @@ except Exception as e:
 try:
     CLIMATE_INGREDIENTS = get_all_climate_ingredients()
 
-    # Build searchable names list (all languages) for fuzzy matching
+    # Build searchable names list (EN + FR only) for fuzzy matching.
+    # Danish names excluded: every Danish DB ingredient has an English equivalent,
+    # so including name_dk causes wrong matches (e.g. "pasta" → "pasta, rå").
     CLIMATE_NAMES = []
     for ing in CLIMATE_INGREDIENTS:
-        for name in [ing.get('name_en'), ing.get('name_dk'), ing.get('name_fr')]:
+        for name in [ing.get('name_en'), ing.get('name_fr')]:
             if name and name not in CLIMATE_NAMES:
                 CLIMATE_NAMES.append(name)
 
