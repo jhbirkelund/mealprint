@@ -399,7 +399,8 @@ def process_rescrape_job(job_id, recipe_id):
     """
     import re
     from db import get_recipe_by_id, get_connection, complete_recipe_job, fail_recipe_job
-    from ingredient_matcher import parse_ingredients, load_climate_names
+    from ingredient_matcher import parse_ingredients, load_climate_names, calculate_ingredient
+    from recipe_manager import calculate_rating
     from mistral_matcher import mistral_match_batch, is_mistral_available
 
     try:
@@ -450,6 +451,7 @@ def process_rescrape_job(job_id, recipe_id):
         cur.execute('DELETE FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
 
         mistral_count = 0
+        total_co2 = 0
         for ing in parsed_ingredients:
             matched_item = ing['candidates'][0] if ing['candidates'] else ''
             matched_by = 'fuzzy'
@@ -458,6 +460,14 @@ def process_rescrape_job(job_id, recipe_id):
                 matched_item = ai_matches[ing['original_line']]['match']
                 matched_by = 'mistral'
                 mistral_count += 1
+
+            # Calculate grams and CO2 for this ingredient
+            calc = calculate_ingredient(ing['amount'], ing['unit'], matched_item, ing['original_line']) if matched_item else None
+            grams = calc['grams'] if calc else 0
+            item_co2 = calc['co2'] if calc else 0
+            source_db = calc['source_db'] if calc else ''
+            density_applied = calc['density_applied'] if calc else None
+            total_co2 += item_co2
 
             cur.execute('''
                 INSERT INTO recipe_ingredients
@@ -469,12 +479,24 @@ def process_rescrape_job(job_id, recipe_id):
                 matched_item,
                 ing['amount'],
                 ing['unit'],
-                ing['grams'],
-                ing['co2'],
-                ing['source_db'],
+                grams,
+                item_co2,
+                source_db,
                 matched_by,
-                ing.get('density_applied')
+                density_applied
             ))
+
+        # Update recipe totals
+        co2_per_serving = round(total_co2 / new_servings, 3) if new_servings else 0
+        rating = calculate_rating(co2_per_serving)
+        cur.execute('''
+            UPDATE recipes
+            SET total_co2 = %s, co2_per_serving = %s,
+                rating_label = %s, rating_color = %s, rating_emoji = %s
+            WHERE id = %s
+        ''', (round(total_co2, 3), co2_per_serving,
+              rating['label'], rating['color'], rating['emoji'],
+              recipe_id))
 
         conn.commit()
         cur.close()

@@ -316,7 +316,7 @@ def init_db():
     cur.execute("""
         UPDATE import_jobs
         SET status = 'error', result_message = 'Job interrupted — server restarted. Please try again.'
-        WHERE status = 'running'
+        WHERE status IN ('pending', 'running', 'processing')
         AND job_type IN ('rescrape', 'ai_rematch')
     """)
 
