@@ -14,16 +14,28 @@
     <!-- Import from URL Card -->
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
         <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">Import from URL</h2>
-        <form method="POST" action="/scrape">
+        <form method="POST" action="/scrape" id="scrapeForm">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="flex flex-col sm:flex-row gap-3">
-                <input type="url" name="recipe_url" placeholder="https://recipe-website.com/..." required
+                <input type="url" name="recipe_url" id="scrapeUrl" placeholder="https://recipe-website.com/..." required
                     class="flex-1 px-4 py-3 rounded-2xl border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition text-slate-700 placeholder-slate-400">
-                <button type="submit" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-medium transition shadow-sm sm:flex-shrink-0">
-                    Scrape
+                <button type="submit" id="scrapeBtn" class="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-2xl text-sm font-medium transition shadow-sm sm:flex-shrink-0 flex items-center gap-2">
+                    <svg id="scrapeSpinner" class="hidden animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    <span id="scrapeBtnText">Scrape</span>
                 </button>
             </div>
         </form>
+        <script>
+        document.getElementById('scrapeForm').addEventListener('submit', function() {
+            document.getElementById('scrapeUrl').disabled = true;
+            document.getElementById('scrapeBtn').disabled = true;
+            document.getElementById('scrapeSpinner').classList.remove('hidden');
+            document.getElementById('scrapeBtnText').textContent = 'Importing…';
+        });
+        </script>
     </div>
 
     <!-- Divider -->

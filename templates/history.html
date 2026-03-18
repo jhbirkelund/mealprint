@@ -32,8 +32,8 @@
             </div>
             <!-- Sort toggles -->
             <div class="flex gap-1 bg-white border border-slate-200 rounded-2xl p-1 flex-shrink-0">
-                <button data-sort="rating" class="sort-btn active px-3 py-2 rounded-xl text-xs font-medium transition bg-slate-900 text-white">Best</button>
-                <button data-sort="date" class="sort-btn px-3 py-2 rounded-xl text-xs font-medium transition text-slate-500 hover:text-slate-700">New</button>
+                <button data-sort="rating" class="sort-btn px-3 py-2 rounded-xl text-xs font-medium transition text-slate-500 hover:text-slate-700">Best</button>
+                <button data-sort="date" class="sort-btn active px-3 py-2 rounded-xl text-xs font-medium transition bg-slate-900 text-white">New</button>
                 <button data-sort="title" class="sort-btn px-3 py-2 rounded-xl text-xs font-medium transition text-slate-500 hover:text-slate-700">A–Z</button>
             </div>
         </div>
@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let recipeCards = Array.from(document.querySelectorAll('.recipe-card'));
 
     let activeTag = 'all';
-    let activeSort = 'rating';
+    let activeSort = 'date';
 
     // Sort toggle handlers
     sortBtns.forEach(btn => {

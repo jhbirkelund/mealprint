@@ -1,99 +1,135 @@
 {
     "categories": {
+        "almond_flour": {
+            "density": 0.40,
+            "keywords": ["almond flour"],
+            "source": "King Arthur Baking Ingredient Weight Chart"
+        },
+        "wholemeal_flour": {
+            "density": 0.47,
+            "keywords": ["wholemeal flour", "whole wheat flour", "wholewheat flour", "whole grain flour", "whole-wheat flour"],
+            "source": "King Arthur Baking Ingredient Weight Chart"
+        },
         "flour": {
             "density": 0.53,
             "keywords": ["flour"],
-            "exclude": ["cauliflower", "sunflower"]
+            "exclude": ["cauliflower", "sunflower", "almond flour", "wholemeal flour", "whole wheat flour", "wholewheat flour"],
+            "source": "King Arthur Baking Ingredient Weight Chart"
+        },
+        "sugar_brown": {
+            "density": 0.89,
+            "keywords": ["brown sugar", "muscovado", "demerara"],
+            "source": "King Arthur Baking Ingredient Weight Chart"
         },
         "sugar_granulated": {
             "density": 0.85,
             "keywords": ["sugar"],
-            "exclude": ["sugar snap"]
+            "exclude": ["sugar snap", "brown sugar", "muscovado", "demerara", "icing sugar", "powdered sugar", "confectioner"],
+            "source": "King Arthur Baking Ingredient Weight Chart"
         },
         "sugar_powdered": {
-            "density": 0.56,
-            "keywords": ["icing sugar", "powdered sugar", "confectioner"]
+            "density": 0.47,
+            "keywords": ["icing sugar", "powdered sugar", "confectioner"],
+            "source": "King Arthur Baking Ingredient Weight Chart"
         },
         "oil": {
             "density": 0.92,
             "keywords": ["oil"],
-            "exclude": ["oily", "foil"]
+            "exclude": ["oily", "foil"],
+            "source": "USDA FoodData Central"
         },
         "butter": {
             "density": 0.91,
             "keywords": ["butter"],
-            "exclude": ["buttermilk", "butternut", "peanut butter"]
+            "exclude": ["buttermilk", "butternut", "peanut butter"],
+            "source": "USDA FoodData Central"
         },
         "honey": {
             "density": 1.42,
-            "keywords": ["honey"]
+            "keywords": ["honey"],
+            "source": "USDA FoodData Central"
         },
         "milk": {
             "density": 1.03,
             "keywords": ["milk"],
-            "exclude": ["coconut milk", "oat milk", "almond milk", "cheese", "soymilk", "buttermilk"]
+            "exclude": ["coconut milk", "oat milk", "almond milk", "cheese", "soymilk", "buttermilk"],
+            "source": "USDA FoodData Central"
         },
         "cream": {
             "density": 1.01,
             "keywords": ["cream"],
-            "exclude": ["ice cream", "cream cheese"]
+            "exclude": ["ice cream", "cream cheese"],
+            "source": "USDA FoodData Central"
         },
         "oats": {
             "density": 0.38,
-            "keywords": ["oats", "oatmeal", "rolled oat"]
+            "keywords": ["oats", "oatmeal", "rolled oat"],
+            "source": "King Arthur Baking Ingredient Weight Chart"
         },
         "rice": {
             "density": 0.85,
             "keywords": ["rice"],
-            "exclude": ["rice flour", "rice noodle", "rice milk"]
+            "exclude": ["rice flour", "rice noodle", "rice milk"],
+            "source": "USDA FoodData Central"
         },
         "nuts": {
             "density": 0.53,
             "keywords": ["almond", "walnut", "pecan", "cashew", "peanut"],
-            "exclude": ["almond milk", "peanut butter"]
+            "exclude": ["almond milk", "peanut butter", "almond flour"],
+            "source": "USDA FoodData Central"
         },
         "cocoa": {
             "density": 0.35,
-            "keywords": ["cocoa powder", "cacao powder"]
+            "keywords": ["cocoa powder", "cacao powder"],
+            "source": "King Arthur Baking Ingredient Weight Chart"
         },
         "syrup": {
             "density": 1.38,
-            "keywords": ["syrup", "maple", "agave", "molasses"]
+            "keywords": ["syrup", "maple", "agave", "molasses"],
+            "source": "USDA FoodData Central"
         },
         "yogurt": {
             "density": 1.03,
-            "keywords": ["yogurt", "yoghurt"]
+            "keywords": ["yogurt", "yoghurt"],
+            "source": "USDA FoodData Central"
         },
         "water": {
             "density": 1.0,
-            "keywords": ["water", "broth", "stock", "bouillon", "juice"]
+            "keywords": ["water", "broth", "stock", "bouillon", "juice"],
+            "source": "Standard (1 ml = 1 g for water-based liquids)"
         },
         "breadcrumbs": {
             "density": 0.45,
-            "keywords": ["breadcrumb", "bread-crumb", "panko"]
+            "keywords": ["breadcrumb", "bread-crumb", "panko"],
+            "source": "USDA FoodData Central"
         },
         "ground_spices": {
             "density": 0.50,
             "keywords": ["cumin", "paprika", "cinnamon", "turmeric", "cayenne", "curry", "coriander, seed", "cardamom", "nutmeg", "allspice", "cloves", "pepper, black", "pepper, white"],
-            "exclude": ["coriander, fresh", "curry paste"]
+            "exclude": ["coriander, fresh", "curry paste"],
+            "source": "USDA FoodData Central"
         },
         "dried_herbs": {
             "density": 0.20,
             "keywords": ["oregano", "thyme", "marjoram", "bay, leaves", "basil, dried", "parsley, dried", "rosemary, dried", "sage, dried", "dill, dried", "tarragon, dried"],
-            "exclude": ["fresh"]
+            "exclude": ["fresh"],
+            "source": "USDA FoodData Central"
         },
         "fresh_herbs": {
             "density": 0.07,
-            "keywords": ["basil, fresh", "parsley, fresh", "coriander, fresh", "mint, fresh", "dill, fresh", "chives, raw", "sage, fresh", "tarragon, fresh", "rosemary, fresh", "thyme, fresh"]
+            "keywords": ["basil, fresh", "parsley, fresh", "coriander, fresh", "mint, fresh", "dill, fresh", "chives, raw", "sage, fresh", "tarragon, fresh", "rosemary, fresh", "thyme, fresh"],
+            "source": "USDA FoodData Central"
         },
         "grated_cheese": {
             "density": 0.35,
-            "keywords": ["parmesan", "pecorino", "romano"]
+            "keywords": ["parmesan", "pecorino", "romano"],
+            "source": "USDA FoodData Central"
         },
         "leafy_vegetables": {
             "density": 0.30,
             "keywords": ["kale", "cabbage", "spinach", "chard", "collard"],
-            "exclude": ["turnip cabbage", "sauerkraut"]
+            "exclude": ["turnip cabbage", "sauerkraut"],
+            "source": "USDA FoodData Central"
         }
     },
     "default_density": 1.0
