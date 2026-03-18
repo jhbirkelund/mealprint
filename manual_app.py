@@ -559,6 +559,15 @@ def resources():
 def resources_density():
     return render_template('density.html')
 
+@app.route('/resources/matching')
+def resources_matching():
+    ingredient_weights = {k: v for k, v in CONVERSIONS['ingredients'].items() if k != 'can'}
+    return render_template('matching.html',
+        aliases=INGREDIENT_ALIASES,
+        ingredient_weights=ingredient_weights,
+        densities=DENSITIES['categories']
+    )
+
 @app.route('/privacy')
 def privacy():
     return render_template('privacy.html')

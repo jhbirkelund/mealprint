@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}How Mealprint Matches Ingredients - Mealprint{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto pt-10">
+
+    <!-- Header -->
+    <div class="mb-8">
+        <a href="/resources" class="text-slate-400 hover:text-slate-600 text-sm font-medium transition mb-2 inline-block">&larr; Back to Resources</a>
+        <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 tracking-tight">How Mealprint Matches Ingredients</h1>
+        <p class="text-slate-500 mt-2">Technical White Paper &middot; Version 1.0 &middot; March 2025</p>
+    </div>
+
+    <!-- Intro -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <p class="text-slate-700 leading-relaxed mb-4">
+            Every recipe added to Mealprint contains free-text ingredient lines — things like <em>"1 cup finely chopped onion"</em> or <em>"2 large eggs, beaten"</em>. Before a CO<sub>2</sub> value can be calculated, each line must be translated into a specific entry in our climate database with a known weight in grams.
+        </p>
+        <p class="text-slate-700 leading-relaxed mb-6">
+            This document explains exactly how that translation works, what approximations are made, and where the limits of the system lie. It covers five topics:
+        </p>
+        <ol class="space-y-2 text-slate-700 text-sm">
+            <li><a href="#pipeline" class="text-emerald-600 hover:text-emerald-700 font-medium">1. The matching pipeline</a> — the five steps from raw text to a CO<sub>2</sub> value</li>
+            <li><a href="#aliases" class="text-emerald-600 hover:text-emerald-700 font-medium">2. Ingredient aliases</a> — curated mappings from recipe terms to database names</li>
+            <li><a href="#piece-weights" class="text-emerald-600 hover:text-emerald-700 font-medium">3. Piece weights</a> — standard gram values for countable ingredients</li>
+            <li><a href="#densities" class="text-emerald-600 hover:text-emerald-700 font-medium">4. Density categories</a> — converting volume measurements to grams</li>
+            <li><a href="#limitations" class="text-emerald-600 hover:text-emerald-700 font-medium">5. Limitations</a> — where approximations are made and what can't yet be matched</li>
+        </ol>
+    </div>
+
+    <!-- 1. Pipeline -->
+    <div id="pipeline" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">1. The Matching Pipeline</h2>
+        <p class="text-slate-700 leading-relaxed mb-6">Each ingredient line goes through five steps in sequence before a CO<sub>2</sub> value is assigned.</p>
+
+        <ol class="space-y-5">
+            <li class="flex gap-4">
+                <span class="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 text-sm font-semibold flex items-center justify-center">1</span>
+                <div>
+                    <p class="font-semibold text-slate-900">NLP Parse</p>
+                    <p class="text-slate-600 text-sm mt-0.5">We use <a href="https://github.com/strangetom/ingredient-parser" target="_blank" class="text-emerald-600 hover:text-emerald-700 font-medium">ingredient-parser-nlp</a>, a CRF model trained on 81,000 annotated ingredient sentences. It extracts the amount, unit, and clean ingredient name — stripping prep notes like "finely chopped", "diced", or "to taste". For example, <em>"1 cup finely chopped onion"</em> becomes <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs">amount=1, unit=cup, name=onion</code>.</p>
+                </div>
+            </li>
+            <li class="flex gap-4">
+                <span class="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 text-sm font-semibold flex items-center justify-center">2</span>
+                <div>
+                    <p class="font-semibold text-slate-900">Informal Unit Preprocessing</p>
+                    <p class="text-slate-600 text-sm mt-0.5">Informal units that aren't in the standard unit conversion table are normalised before matching: <em>handful</em> → 30g, <em>pinch</em> → 0.5g, <em>dash</em> → 0.5g, <em>sprig</em> → fixed piece weight. Unitless piece-based ingredients (e.g. "2 eggs", "3 garlic cloves") are detected and routed to the piece weight lookup in step 2 of weight conversion.</p>
+                </div>
+            </li>
+            <li class="flex gap-4">
+                <span class="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 text-sm font-semibold flex items-center justify-center">3</span>
+                <div>
+                    <p class="font-semibold text-slate-900">Alias Lookup</p>
+                    <p class="text-slate-600 text-sm mt-0.5">The parsed name is checked against a curated alias dictionary using longest-match substring logic. This maps everyday recipe terms to the canonical names used in the climate database — for example, <em>heavy cream</em> → <em>Cream, whipping, 38% fat</em>, or <em>all-purpose flour</em> → <em>Wheat flour, type 55</em>. The full list is in the <a href="#aliases" class="text-emerald-600 hover:text-emerald-700">aliases table</a> below.</p>
+                </div>
+            </li>
+            <li class="flex gap-4">
+                <span class="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 text-sm font-semibold flex items-center justify-center">4</span>
+                <div>
+                    <p class="font-semibold text-slate-900">Hybrid Fuzzy Matching</p>
+                    <p class="text-slate-600 text-sm mt-0.5">The name is scored against all ~2,957 entries in the climate database using two signals in parallel: a token word overlap score and a <strong>rapidfuzz WRatio</strong> fuzzy string score. A match is accepted when the word score is ≥ 4 <em>and</em> the fuzzy score is ≥ 92%. Both thresholds must pass.</p>
+                </div>
+            </li>
+            <li class="flex gap-4">
+                <span class="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-100 text-emerald-700 text-sm font-semibold flex items-center justify-center">5</span>
+                <div>
+                    <p class="font-semibold text-slate-900">AI Fallback (Mistral)</p>
+                    <p class="text-slate-600 text-sm mt-0.5">When confidence falls below the threshold, the ingredient is sent to <strong>Mistral AI</strong>, which selects the best match from the full database. This handles unusual or compound ingredient names that trip up string-based matching. Each ingredient stores a <code class="bg-slate-100 px-1.5 py-0.5 rounded text-xs">matched_by</code> value recording which step produced the match.</p>
+                </div>
+            </li>
+        </ol>
+
+        <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mt-6">
+            <p class="text-emerald-900 text-sm"><strong>Database priority:</strong> Matches are searched in <a href="https://thebigclimatedatabase.com/" target="_blank" class="text-emerald-700 font-medium hover:underline">The Big Climate Database</a> (Danish, ~500 ingredients, CO<sub>2</sub> + nutrition) first, then <a href="https://agribalyse.ademe.fr" target="_blank" class="text-emerald-700 font-medium hover:underline">Agribalyse</a> (French, ~2,500 ingredients, CO<sub>2</sub> only) as a fallback.</p>
+        </div>
+    </div>
+
+    <!-- 2. Ingredient Aliases -->
+    <div id="aliases" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-1">2. Ingredient Aliases</h2>
+        <p class="text-slate-500 text-sm mb-5">{{ aliases | length }} entries &middot; Maps common recipe terms to canonical climate database names. Longest-match substring is used, so <em>"red bell pepper"</em> is resolved before <em>"pepper"</em>. Where no exact DB entry exists, the nearest reasonable proxy is used.</p>
+
+        <div class="overflow-x-auto max-h-96 overflow-y-auto border border-slate-100 rounded-2xl">
+            <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-white z-10">
+                    <tr class="border-b border-slate-200">
+                        <th class="text-left py-3 px-4 font-semibold text-slate-900">Recipe term</th>
+                        <th class="text-left py-3 px-4 font-semibold text-slate-900">Matched to in DB</th>
+                    </tr>
+                </thead>
+                <tbody class="text-slate-700">
+                    {% for term, db_name in aliases | dictsort %}
+                    <tr class="border-b border-slate-50 hover:bg-slate-50">
+                        <td class="py-2 px-4 font-mono text-xs text-slate-600">{{ term }}</td>
+                        <td class="py-2 px-4 text-slate-700">{{ db_name }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 3. Piece Weights -->
+    <div id="piece-weights" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-1">3. Piece Weights</h2>
+        <p class="text-slate-500 text-sm mb-5">When an ingredient has no volume unit — e.g. "2 eggs", "3 garlic cloves" — we look up a standard piece weight in grams. These are population-average values; actual sizes vary.</p>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200">
+                        <th class="text-left py-3 font-semibold text-slate-900">Ingredient</th>
+                        <th class="text-right py-3 font-semibold text-slate-900">Weight per piece</th>
+                    </tr>
+                </thead>
+                <tbody class="text-slate-700">
+                    {% for name, grams in ingredient_weights | dictsort %}
+                    <tr class="border-b border-slate-50">
+                        <td class="py-2 font-mono text-xs text-slate-600">{{ name }}</td>
+                        <td class="py-2 text-right font-medium">{{ grams }}g</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 4. Density Categories -->
+    <div id="densities" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-1">4. Density Categories</h2>
+        <p class="text-slate-500 text-sm mb-5">Volume measurements like "1 cup flour" use ingredient-specific density rather than water (1.0 g/ml). See the <a href="/resources/density" class="text-emerald-600 hover:text-emerald-700">density white paper</a> for the full explanation and data sources.</p>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200">
+                        <th class="text-left py-3 font-semibold text-slate-900">Category</th>
+                        <th class="text-center py-3 font-semibold text-slate-900">Density (g/ml)</th>
+                        <th class="text-left py-3 font-semibold text-slate-900">Applies to</th>
+                        <th class="text-left py-3 font-semibold text-slate-500">Excludes</th>
+                    </tr>
+                </thead>
+                <tbody class="text-slate-700">
+                    {% for category, config in densities | dictsort %}
+                    <tr class="border-b border-slate-50">
+                        <td class="py-2 capitalize">{{ category | replace('_', ' ') }}</td>
+                        <td class="py-2 text-center font-mono">{{ config.density }}</td>
+                        <td class="py-2 text-slate-600">{{ config.keywords | join(', ') }}</td>
+                        <td class="py-2 text-slate-400 text-xs">
+                            {% if config.exclude %}{{ config.exclude | join(', ') }}{% else %}&mdash;{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 5. Limitations -->
+    <div id="limitations" class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">5. Limitations</h2>
+        <ul class="space-y-3 text-slate-700 text-sm leading-relaxed">
+            <li class="flex gap-2">
+                <span class="text-slate-400 mt-0.5">&#8226;</span>
+                <span><strong class="text-slate-900">Proxy matches:</strong> Some ingredients have no close entry in the database. We use the nearest reasonable proxy — for example, dried tarragon is matched to oregano (dried), and Manchego to a generic hard cow's milk cheese. These approximations are visible in the alias table above.</span>
+            </li>
+            <li class="flex gap-2">
+                <span class="text-slate-400 mt-0.5">&#8226;</span>
+                <span><strong class="text-slate-900">Can weights:</strong> Canned ingredients default to 400g net weight. Exceptions: tuna (150g), sardines (100g), anchovies (50g).</span>
+            </li>
+            <li class="flex gap-2">
+                <span class="text-slate-400 mt-0.5">&#8226;</span>
+                <span><strong class="text-slate-900">Piece weights:</strong> Population averages are used. A large egg weighs more than a small one; garlic clove sizes vary by variety. These are best-estimate values, not measurements.</span>
+            </li>
+            <li class="flex gap-2">
+                <span class="text-slate-400 mt-0.5">&#8226;</span>
+                <span><strong class="text-slate-900">Database coverage:</strong> ~2,957 ingredients are currently indexed. Novel, branded, or highly processed ingredients may fall back to a proxy or remain unmatched and require manual review in the admin panel.</span>
+            </li>
+        </ul>
+
+        <div class="mt-6 flex flex-wrap gap-4 text-sm">
+            <a href="/resources/density" class="text-emerald-600 hover:text-emerald-700 font-medium">Density conversion white paper &rarr;</a>
+            <a href="/about-rating" class="text-emerald-600 hover:text-emerald-700 font-medium">How ratings work &rarr;</a>
+        </div>
+    </div>
+
+    <!-- Back link -->
+    <div class="text-center pb-10">
+        <a href="/resources" class="text-slate-500 hover:text-emerald-600 text-sm font-medium transition">&larr; Back to Resources</a>
+    </div>
+
+</div>
+{% endblock %}

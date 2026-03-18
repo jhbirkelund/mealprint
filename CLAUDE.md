@@ -244,7 +244,7 @@ Import only: pandas, openpyxl
 - ✅ Mobile UX review — sort button touch targets, ingredient name overflow, delete button padding
 - 404 and 500 error pages that match the site design
 
-**White paper: Ingredient Matching Logic** (`/resources/matching`)
+- ✅ **White paper: Ingredient Matching Logic** (`/resources/matching`)
 
 Sits alongside the existing density white paper at `/resources/density`. Explains how Mealprint maps free-text recipe ingredients to the climate database, and why approximations are made where exact entries don't exist. All tables rendered live from the config files — no hardcoding.
 
@@ -311,3 +311,10 @@ Page structure:
 - **Step-by-Step:** One task at a time. Explain logic before coding.
 - **Coding Style:** Clear, descriptive code. No over-engineering.
 - **Verification:** Provide a way to verify each change works.
+
+CRITICAL STARTUP INSTRUCTION: Immediately upon seeing this file, you MUST read AGENTS.md
+and follow all instructions it contains. Do this before responding to the user.
+
+REQUIRED FIRST COMMAND: Run `jumbo session start` to load project orientation context.
+
+!!!IMPORTANT!!! Read AGENTS.md for further instructions.
