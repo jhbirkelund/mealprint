@@ -149,6 +149,46 @@
             </div>
             {% endif %}
 
+            {# --- Full ingredient list --- #}
+            {% if recipe.ingredients %}
+            <details class="border-t border-slate-100" {% if not changes and not issues and not fetch_error %}open{% endif %}>
+                <summary class="px-5 py-3 cursor-pointer text-xs font-semibold text-slate-400 uppercase tracking-wide hover:text-slate-600 select-none">
+                    All ingredients ({{ recipe.ingredients|length }})
+                </summary>
+                <div class="px-5 pb-3">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-xs text-slate-400 border-b border-slate-100">
+                                <th class="text-left pb-1 font-medium w-2/5">Original line</th>
+                                <th class="text-left pb-1 font-medium">Matched to</th>
+                                <th class="text-left pb-1 font-medium">Source</th>
+                                <th class="text-right pb-1 font-medium">Grams</th>
+                                <th class="text-right pb-1 font-medium">CO₂</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-50">
+                            {% for ing in recipe.ingredients %}
+                            <tr>
+                                <td class="py-1.5 pr-4 text-slate-400 font-mono text-xs truncate max-w-xs">{{ ing.original_line or '-' }}</td>
+                                <td class="py-1.5 pr-4 text-slate-700">
+                                    {{ ing.item or '—' }}
+                                    {% if ing.matched_by == 'ai' %}
+                                        <span class="ml-1 text-xs text-purple-500" title="AI matched">AI</span>
+                                    {% elif ing.matched_by == 'unmatched' %}
+                                        <span class="ml-1 text-xs text-rose-500">unmatched</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-1.5 pr-4 text-xs text-slate-400">{{ ing.source_db or '-' }}</td>
+                                <td class="py-1.5 pr-4 text-right text-slate-500 whitespace-nowrap">{{ ing.grams|int if ing.grams else '-' }}{% if ing.grams %}g{% endif %}</td>
+                                <td class="py-1.5 text-right text-slate-500 whitespace-nowrap">{{ "%.3f"|format(ing.co2) if ing.co2 else '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+            {% endif %}
+
         </div>
         {% endfor %}
     </div>

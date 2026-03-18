@@ -1180,7 +1180,7 @@ def set_verification_status(recipe_id, status):
 
 
 def get_under_review_recipes():
-    """Get published recipes flagged as under_review, including verification diff."""
+    """Get published recipes flagged as under_review, including verification diff and all ingredients."""
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     cur.execute('''
@@ -1190,6 +1190,17 @@ def get_under_review_recipes():
         ORDER BY created_at DESC
     ''')
     recipes = [dict(r) for r in cur.fetchall()]
+
+    # Attach ingredients for each recipe
+    for recipe in recipes:
+        cur.execute('''
+            SELECT original_line, item, grams, co2, source_db, matched_by
+            FROM recipe_ingredients
+            WHERE recipe_id = %s
+            ORDER BY id
+        ''', (recipe['id'],))
+        recipe['ingredients'] = [dict(r) for r in cur.fetchall()]
+
     cur.close()
     conn.close()
     return recipes

@@ -281,6 +281,7 @@ Page structure:
 - ✅ Admin: `/admin/verify` — lists `under_review` recipes for manual check and sign-off
 - Run with: `DATABASE_URL="..." python3 verify_recipes.py --count 10`
 - `ingredient_issues.md` — running list of matching/weight/density bugs found during verification; fix in bulk sessions
+- ✅ `/admin/verify` — show all ingredients per recipe (not just discrepancies), so the full ingredient list is visible and can be signed off at a glance
 
 **Monitoring:**
 - Add basic error monitoring (Sentry free tier) so crashes surface without users reporting them
