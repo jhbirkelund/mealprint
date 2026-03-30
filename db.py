@@ -462,7 +462,7 @@ def get_all_recipes():
     result = []
     for r in recipes:
         # Get ingredients for this recipe (including original_line, source_db, and matched_by for paper trail)
-        cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied FROM recipe_ingredients WHERE recipe_id = %s', (r['id'],))
+        cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied FROM recipe_ingredients WHERE recipe_id = %s ORDER BY id', (r['id'],))
         ingredients = [dict(ing) for ing in cur.fetchall()]
 
         # Get tags for this recipe
@@ -520,7 +520,7 @@ def get_recipe_by_id(recipe_id):
         return None
 
     # Get ingredients (including original_line, source_db, and matched_by for paper trail)
-    cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied FROM recipe_ingredients WHERE recipe_id = %s', (recipe_id,))
+    cur.execute('SELECT original_line, item, amount, unit, grams, co2, source_db, matched_by, density_applied FROM recipe_ingredients WHERE recipe_id = %s ORDER BY id', (recipe_id,))
     ingredients = [dict(ing) for ing in cur.fetchall()]
 
     # Get tags
@@ -1179,16 +1179,25 @@ def set_verification_status(recipe_id, status):
     conn.close()
 
 
-def get_under_review_recipes():
+def get_under_review_recipes(limit=None):
     """Get published recipes flagged as under_review, including verification diff and all ingredients."""
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
-    cur.execute('''
-        SELECT id, name, source, domain, co2_per_serving, created_at, verification_notes
-        FROM recipes
-        WHERE is_published = TRUE AND verification_status = 'under_review'
-        ORDER BY created_at DESC
-    ''')
+    if limit is not None:
+        cur.execute('''
+            SELECT id, name, source, domain, co2_per_serving, created_at, verification_notes
+            FROM recipes
+            WHERE is_published = TRUE AND verification_status = 'under_review'
+            ORDER BY created_at DESC
+            LIMIT %s
+        ''', (limit,))
+    else:
+        cur.execute('''
+            SELECT id, name, source, domain, co2_per_serving, created_at, verification_notes
+            FROM recipes
+            WHERE is_published = TRUE AND verification_status = 'under_review'
+            ORDER BY created_at DESC
+        ''')
     recipes = [dict(r) for r in cur.fetchall()]
 
     # Attach ingredients for each recipe

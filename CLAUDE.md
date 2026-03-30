@@ -230,6 +230,11 @@ Import only: pandas, openpyxl
 
 ### Phase 8: Pre-Launch Polish 🔄 IN PROGRESS
 
+**Verification pipeline fixes (critical — blocking DB growth):**
+- ❌ **Fix verify: fuzzy line matching** — `verify_recipes.py` matches live lines to stored rows by position (index), which breaks when website ingredient order differs from stored order. Replace with rapidfuzz similarity matching on `original_line`. (`goal_388de02e`)
+- ❌ **Fix ingredient query ordering** — All `recipe_ingredients` SELECT queries in `db.py` lack `ORDER BY id`, causing edit/verify/recipe views to show ingredients in inconsistent order. (`goal_36139bbe`)
+- ❌ **Separate verify from rematch** — Currently verify both checks live source integrity AND auto-corrects matching quality in one pass. Split into: (1) integrity check mode (live fetch, no DB writes); (2) rematch mode (re-run pipeline on stored `original_lines`, no live fetch). (`goal_88bea057`)
+
 **Technical debt to clear:**
 - ✅ Replace `quantulum3` with `ingredient-parser-nlp` — NLP/CRF model, much better accuracy on long ingredient descriptions; lazy-loaded for fast startup
 - ✅ Fix unit mapping bugs — clove, head, stalk, slice, sprig now mapped; can weight fixed (always 400g); broccoli/cauliflower/cabbage/lettuce weights added

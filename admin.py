@@ -27,6 +27,7 @@ from db import (
     get_job_status,
     get_under_review_recipes,
     set_verification_status,
+    save_verification_notes,
 )
 from recipe_manager import calculate_rating, CONVERSIONS, DENSITIES
 from ingredient_matcher import get_ingredients_for_autocomplete
@@ -498,6 +499,24 @@ def mark_verified(recipe_id):
     """Mark a recipe as verified after manual review."""
     set_verification_status(recipe_id, 'verified')
     flash('Recipe marked as verified.', 'success')
+    return redirect(url_for('admin.verify_queue'))
+
+
+@admin_bp.route('/review/<recipe_id>/rematch-pipeline', methods=['POST'])
+@admin_required
+def rematch_pipeline(recipe_id):
+    """Re-run the matching pipeline on stored original_lines for a single recipe."""
+    from verify_recipes import rematch_recipe
+    from ingredient_matcher import load_climate_names
+    recipe = get_recipe_by_id(recipe_id)
+    if not recipe:
+        flash('Recipe not found.', 'error')
+        return redirect(url_for('admin.verify_queue'))
+    climate_names = load_climate_names()
+    notes, _out, _issues = rematch_recipe({'id': recipe_id, 'name': recipe['name']}, climate_names)
+    save_verification_notes(recipe_id, notes)
+    n_changes = len(notes.get('changes', []))
+    flash(f"Re-matched {n_changes} ingredient(s) updated." if n_changes else "Re-matched — no changes.", 'success')
     return redirect(url_for('admin.verify_queue'))
 
 

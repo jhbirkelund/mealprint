@@ -4,3 +4,6 @@ __pycache__/
 *.code-workspace
 .claude/
 Old files/
+
+.jumbo/
+.jumbo/jumbo.db
