@@ -20,7 +20,8 @@ import urllib.request
 from html.parser import HTMLParser
 from urllib.parse import urlparse
 
-from recipe_scrapers import scrape_me
+import requests
+from recipe_scrapers import scrape_html
 from recipe_manager import calculate_rating
 from ingredient_matcher import auto_match_ingredients, calculate_recipe_totals, load_climate_names
 from db import (
@@ -30,12 +31,25 @@ from db import (
     get_pending_import_items,
     update_import_item,
     start_import_job,
-    save_recipe_to_db
+    save_recipe_to_db,
+    set_verification_status,
 )
 
 
 # Rate limiting: seconds between requests
 RATE_LIMIT_SECONDS = 3
+
+# Browser-like User-Agent to avoid 403 blocks from recipe sites
+_BROWSER_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+}
+
+
+def scrape_url(url):
+    """Fetch a recipe URL with a browser User-Agent and return a scraper instance."""
+    response = requests.get(url, headers=_BROWSER_HEADERS, timeout=15)
+    response.raise_for_status()
+    return scrape_html(response.text, org_url=url)
 
 
 class OGImageParser(HTMLParser):
@@ -54,12 +68,10 @@ class OGImageParser(HTMLParser):
 def extract_og_image(url):
     """Fetch page and extract og:image URL."""
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            html = response.read().decode('utf-8', errors='ignore')
-            parser = OGImageParser()
-            parser.feed(html)
-            return parser.og_image
+        response = requests.get(url, headers=_BROWSER_HEADERS, timeout=10)
+        parser = OGImageParser()
+        parser.feed(response.text)
+        return parser.og_image
     except Exception:
         return ""
 
@@ -73,7 +85,7 @@ def scrape_recipe(url):
         Dict keys: name, servings, ingredients_raw, source, og_image_url, site_rating, domain, language
     """
     try:
-        scraper = scrape_me(url)
+        scraper = scrape_url(url)
 
         recipe_name = scraper.title() or ""
         if not recipe_name:
@@ -287,6 +299,9 @@ def run_import_job(urls, verbose=True):
                 recipe_creator='admin'
             )
 
+            # Flag for verification queue (skip draft review)
+            set_verification_status(recipe_id, 'under_review')
+
             # Mark item as success
             update_import_item(item_id, 'success', recipe_id=recipe_id)
             success += 1
@@ -379,6 +394,9 @@ def process_import_job(job_id):
                 recipe_creator='admin'
             )
 
+            # Flag for verification queue (skip draft review)
+            set_verification_status(recipe_id, 'under_review')
+
             # Mark item as success
             update_import_item(item_id, 'success', recipe_id=recipe_id)
 
@@ -415,7 +433,7 @@ def process_rescrape_job(job_id, recipe_id):
             return
 
         # Scrape fresh data
-        scraper = scrape_me(source_url)
+        scraper = scrape_url(source_url)
         new_name = scraper.title() or recipe['name']
         new_servings_raw = scraper.yields() or str(recipe['servings'])
         servings_match = re.search(r'\d+', str(new_servings_raw))

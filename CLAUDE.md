@@ -231,14 +231,24 @@ Import only: pandas, openpyxl
 ### Phase 8: Pre-Launch Polish 🔄 IN PROGRESS
 
 **Verification pipeline fixes (critical — blocking DB growth):**
-- ❌ **Fix verify: fuzzy line matching** — `verify_recipes.py` matches live lines to stored rows by position (index), which breaks when website ingredient order differs from stored order. Replace with rapidfuzz similarity matching on `original_line`. (`goal_388de02e`)
-- ❌ **Fix ingredient query ordering** — All `recipe_ingredients` SELECT queries in `db.py` lack `ORDER BY id`, causing edit/verify/recipe views to show ingredients in inconsistent order. (`goal_36139bbe`)
-- ❌ **Separate verify from rematch** — Currently verify both checks live source integrity AND auto-corrects matching quality in one pass. Split into: (1) integrity check mode (live fetch, no DB writes); (2) rematch mode (re-run pipeline on stored `original_lines`, no live fetch). (`goal_88bea057`)
+- ✅ **Fix verify: fuzzy line matching** — replaced positional `stored[i]` with `fuzz.WRatio` similarity matching on `original_line`; website reordering no longer scrambles updates. (`goal_388de02e`)
+- ✅ **Fix ingredient query ordering** — added `ORDER BY id` to all `recipe_ingredients` SELECT queries in `db.py`; edit/verify/recipe views now show ingredients in consistent order. (`goal_36139bbe`)
+- ✅ **Separate verify from rematch** — `verify_recipes.py` now has two modes: default (integrity check — live fetch, compare lines, no DB writes) and `--rematch` (re-run pipeline on stored `original_lines`, update confident matches, no live fetch). Re-match button added to `/admin/verify` per recipe. (`goal_88bea057`)
+
+**Verify workflow (published recipes — ongoing):**
+1. `python verify_recipes.py --count 20` → queues unverified published recipes as `under_review`
+2. `/admin/verify` → click **Re-match** to improve matching, then **Mark Verified** to sign off
+
+**Bulk import → publish workflow (new recipes):**
+1. Submit URLs via admin → import job scrapes → recipes saved as unpublished + `under_review` (skip draft review queue)
+2. Run `python verify_recipes.py --rematch --count N` in terminal → reviews stored ingredient matches, auto-corrects confident ones
+3. `/admin/verify` → fix anything via Edit or Re-match, then click **Approve & Publish**
 
 **Technical debt to clear:**
 - ✅ Replace `quantulum3` with `ingredient-parser-nlp` — NLP/CRF model, much better accuracy on long ingredient descriptions; lazy-loaded for fast startup
 - ✅ Fix unit mapping bugs — clove, head, stalk, slice, sprig now mapped; can weight fixed (always 400g); broccoli/cauliflower/cabbage/lettuce weights added
 - ✅ Fix rescrape & AI re-match background jobs — stale cleanup now catches `pending/running/processing`; rescrape was crashing with KeyError (missing grams/co2 keys); now calls `calculate_ingredient()` and updates recipe totals
+- ✅ Fix 403 errors on rescrape/verify — `scrape_me()` sent `recipe-scrapers/x.x` User-Agent, blocked by many recipe sites; replaced with `scrape_url()` helper in `bulk_scraper.py` using a Chrome browser User-Agent + `requests` + `scrape_html()`; used in `scrape_recipe()`, `process_rescrape_job()`, and `verify_recipes.py`
 - ✅ Remove duplicate ingredient parsing — `get_processed_ingredients()` in `manual_app.py` was a diverged copy of `parse_ingredients()` in `ingredient_matcher.py`; deleted and replaced with shared function
 - ✅ Fix Danish names in ingredient matching — `manual_app.py` was building its own `CLIMATE_NAMES` list including `name_dk`; now EN + FR only (same as `ingredient_matcher.py`)
 - ✅ Ingredient matching accuracy pass — batch verification run surfaced ~20 bugs; fixed: word_match_score filter (>3 → >=3 to include short words like "red"/"soy"), first-name-only NLP token (no "or X or Y" pollution), explicit gram override for parenthetical weights ("1 cup (120g)"), MULTIPLIER guard for "2 x 400g cans", safe `getattr` for CompositeIngredientAmount, sprig as fixed-weight unit, CAN_WEIGHTS dict, substring false match ("tin" in "white"), hvidløg Danish alias, lasagna noodle piece weight, oil/wine/vinegar alias targets corrected, lemongrass, pumpkin seeds, dried_herbs density exclusions, cheese out of milk density
@@ -283,7 +293,9 @@ Page structure:
 **Recipe Verification Tool:**
 - ✅ `verify_recipes.py` — terminal script, picks N random unverified published recipes, fetches source URLs, shows side-by-side stored vs. live ingredient comparison, marks all as `under_review`
 - ✅ DB: `verification_status` column on `recipes` (`unverified` / `under_review` / `verified`)
-- ✅ Admin: `/admin/verify` — lists `under_review` recipes for manual check and sign-off
+- ✅ Admin: `/admin/verify` — lists all `under_review` recipes (published and unpublished) for sign-off; shows "Approve & Publish" for new (unpublished) recipes, "Mark Verified" for already-live ones
+- ✅ **Streamlined bulk import → publish flow** — import job sets `under_review` immediately after scrape; skip draft review queue; Approve & Publish in one click from `/admin/verify`
+- ✅ `/admin/verify` — "Unpublished" badge on new recipes so they're visually distinct
 - Run with: `DATABASE_URL="..." python3 verify_recipes.py --count 10`
 - `ingredient_issues.md` — running list of matching/weight/density bugs found during verification; fix in bulk sessions
 - ✅ `/admin/verify` — show all ingredients per recipe (not just discrepancies), so the full ingredient list is visible and can be signed off at a glance
@@ -301,6 +313,7 @@ Page structure:
 - Iterate on any blocking issues before broader promotion
 
 ### Future Ideas (Post-Launch)
+- **Split cream density category** — `cream` currently uses 1.01 g/ml for all cream types. Heavy cream (~36–40% fat) is actually ~0.994 g/ml; error is ~3g/cup. Split into `cream_heavy` (0.994) and keep `cream` at 1.01 for lighter creams. Documented as a known generalisation in the density white paper. Run `recalculate_recipes.py` after.
 - **User accounts** - Supabase Auth with OAuth (Google, GitHub). GDPR-compliant: minimal data stored, clear consent, right to deletion. Prerequisite for ratings, saved recipes, and personalisation. No email/password to keep it simple initially. Replaces passphrase edit/delete protection from Phase 6.
 - **AI recipe description** - Short 2-3 sentence description of the dish, generated from scraped recipe data (title, ingredients, tags). Displayed on recipe page below the hero. Stored in DB to avoid re-generating.
 - **User recipe ratings** - Internal star/thumbs rating for dish quality (separate from CO2 rating). Requires user accounts. Prompt for a rating after they've clicked through to the recipe site (inferred intent to cook). Aggregate into a Mealprint quality score displayed on the recipe page.

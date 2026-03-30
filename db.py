@@ -1179,23 +1179,33 @@ def set_verification_status(recipe_id, status):
     conn.close()
 
 
+def publish_recipe(recipe_id):
+    """Set is_published = TRUE on a recipe."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute('UPDATE recipes SET is_published = TRUE WHERE id = %s', (recipe_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
 def get_under_review_recipes(limit=None):
-    """Get published recipes flagged as under_review, including verification diff and all ingredients."""
+    """Get recipes flagged as under_review (published or unpublished), with verification diff and all ingredients."""
     conn = get_connection()
     cur = conn.cursor(cursor_factory=RealDictCursor)
     if limit is not None:
         cur.execute('''
-            SELECT id, name, source, domain, co2_per_serving, created_at, verification_notes
+            SELECT id, name, source, domain, co2_per_serving, created_at, verification_notes, is_published
             FROM recipes
-            WHERE is_published = TRUE AND verification_status = 'under_review'
+            WHERE verification_status = 'under_review'
             ORDER BY created_at DESC
             LIMIT %s
         ''', (limit,))
     else:
         cur.execute('''
-            SELECT id, name, source, domain, co2_per_serving, created_at, verification_notes
+            SELECT id, name, source, domain, co2_per_serving, created_at, verification_notes, is_published
             FROM recipes
-            WHERE is_published = TRUE AND verification_status = 'under_review'
+            WHERE verification_status = 'under_review'
             ORDER BY created_at DESC
         ''')
     recipes = [dict(r) for r in cur.fetchall()]

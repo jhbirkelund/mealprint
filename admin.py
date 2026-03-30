@@ -28,6 +28,7 @@ from db import (
     get_under_review_recipes,
     set_verification_status,
     save_verification_notes,
+    publish_recipe,
 )
 from recipe_manager import calculate_rating, CONVERSIONS, DENSITIES
 from ingredient_matcher import get_ingredients_for_autocomplete
@@ -488,7 +489,7 @@ def job_status(job_id):
 @admin_bp.route('/verify')
 @admin_required
 def verify_queue():
-    """List published recipes flagged as under_review after verification."""
+    """List under_review recipes (published and unpublished) for sign-off."""
     recipes = get_under_review_recipes()
     return render_template('admin/verify.html', recipes=recipes)
 
@@ -496,9 +497,15 @@ def verify_queue():
 @admin_bp.route('/review/<recipe_id>/mark-verified', methods=['POST'])
 @admin_required
 def mark_verified(recipe_id):
-    """Mark a recipe as verified after manual review."""
-    set_verification_status(recipe_id, 'verified')
-    flash('Recipe marked as verified.', 'success')
+    """Mark a recipe as verified. If unpublished, also publishes it."""
+    recipe = get_recipe_by_id(recipe_id)
+    if recipe and not recipe.get('is_published'):
+        publish_recipe(recipe_id)
+        set_verification_status(recipe_id, 'verified')
+        flash('Recipe approved and published.', 'success')
+    else:
+        set_verification_status(recipe_id, 'verified')
+        flash('Recipe marked as verified.', 'success')
     return redirect(url_for('admin.verify_queue'))
 
 

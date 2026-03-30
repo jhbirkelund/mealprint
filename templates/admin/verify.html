@@ -33,6 +33,10 @@
                     <div class="flex items-center gap-3 flex-wrap">
                         <span class="font-medium text-slate-900">{{ recipe.name }}</span>
 
+                        {% if not recipe.is_published %}
+                            <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">Unpublished</span>
+                        {% endif %}
+
                         {# Status badges #}
                         {% if fetch_error %}
                             <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-rose-100 text-rose-700">Fetch error</span>
@@ -79,9 +83,15 @@
                     </form>
                     <form method="POST" action="{{ url_for('admin.mark_verified', recipe_id=recipe.id) }}" class="inline">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        {% if recipe.is_published %}
                         <button type="submit" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg">
                             Mark Verified
                         </button>
+                        {% else %}
+                        <button type="submit" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg">
+                            Approve &amp; Publish
+                        </button>
+                        {% endif %}
                     </form>
                 </div>
             </div>

@@ -20,7 +20,7 @@ Rematch:
 import argparse
 import os
 from datetime import datetime, timezone
-from recipe_scrapers import scrape_me
+from bulk_scraper import scrape_url
 from rapidfuzz import fuzz
 
 from db import (
@@ -160,7 +160,7 @@ def check_integrity(recipe):
     stored = get_stored_ingredients_for_verification(recipe_id)
 
     try:
-        scraper = scrape_me(source)
+        scraper = scrape_url(source)
         live_lines = scraper.ingredients()
     except Exception as e:
         out.append(f"  ✗ Could not fetch source: {e}")
