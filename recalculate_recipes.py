@@ -29,17 +29,25 @@ from db import get_connection, get_ingredient_by_name
 from recipe_manager import get_weight_in_grams, calculate_rating, VOLUME_UNITS, UNIT_MAP
 
 
-def get_all_recipes_with_ingredients():
+def get_all_recipes_with_ingredients(skip_verified=False):
     """Get all recipes with their ingredients for recalculation."""
     conn = get_connection()
     cur = conn.cursor()
 
-    # Get all recipes
-    cur.execute('''
-        SELECT id, name, servings, total_co2, co2_per_serving
-        FROM recipes
-        ORDER BY created_at
-    ''')
+    # Get all recipes, optionally skipping verified ones
+    if skip_verified:
+        cur.execute('''
+            SELECT id, name, servings, total_co2, co2_per_serving
+            FROM recipes
+            WHERE verification_status IS DISTINCT FROM 'verified'
+            ORDER BY created_at
+        ''')
+    else:
+        cur.execute('''
+            SELECT id, name, servings, total_co2, co2_per_serving
+            FROM recipes
+            ORDER BY created_at
+        ''')
     recipes = cur.fetchall()
 
     result = []
@@ -78,7 +86,7 @@ def get_all_recipes_with_ingredients():
     return result
 
 
-def recalculate_ingredient(item_name, amount, unit):
+def recalculate_ingredient(item_name, amount, unit, original_line=None):
     """Recalculate grams and CO2 for a single ingredient using new density logic."""
     # Get CO2 value from database
     db_match = get_ingredient_by_name(item_name)
@@ -87,8 +95,10 @@ def recalculate_ingredient(item_name, amount, unit):
 
     co2_per_kg = db_match['co2_per_kg']
 
-    # Calculate grams using new density-aware function
-    new_grams = get_weight_in_grams(amount, unit, item_name)
+    # Calculate grams using new density-aware function.
+    # Pass original_line as original_name so piece-weight lookup has the same
+    # context as the initial parse (e.g. "1 bay leaf" matches "bay leaf": 0.5g).
+    new_grams = get_weight_in_grams(amount, unit, item_name, original_name=original_line)
     new_co2 = (new_grams / 1000) * co2_per_kg
 
     return round(new_grams, 1), round(new_co2, 3)
@@ -100,13 +110,15 @@ def is_volume_unit(unit):
     return clean_unit in VOLUME_UNITS
 
 
-def run_migration(dry_run=True):
+def run_migration(dry_run=True, skip_verified=False):
     """Run the recalculation migration."""
     print(f"\n{'='*60}")
     print(f"Recipe Recalculation Migration {'(DRY RUN)' if dry_run else '(LIVE)'}")
+    if skip_verified:
+        print(f"Skipping verified recipes")
     print(f"{'='*60}\n")
 
-    recipes = get_all_recipes_with_ingredients()
+    recipes = get_all_recipes_with_ingredients(skip_verified=skip_verified)
     print(f"Found {len(recipes)} recipes to process\n")
 
     total_changes = 0
@@ -121,7 +133,7 @@ def run_migration(dry_run=True):
         for ing in recipe['ingredients']:
             # Recalculate this ingredient
             new_grams, new_co2 = recalculate_ingredient(
-                ing['item'], ing['amount'], ing['unit']
+                ing['item'], ing['amount'], ing['unit'], ing['original_line']
             )
 
             if new_grams is None:
@@ -243,9 +255,14 @@ def main():
         action='store_true',
         help='Preview changes without applying them'
     )
+    parser.add_argument(
+        '--skip-verified',
+        action='store_true',
+        help='Skip recipes with verification_status=verified'
+    )
 
     args = parser.parse_args()
-    run_migration(dry_run=args.dry_run)
+    run_migration(dry_run=args.dry_run, skip_verified=args.skip_verified)
 
 
 if __name__ == '__main__':
