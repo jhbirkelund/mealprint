@@ -11,6 +11,12 @@
         <p class="text-slate-500 text-lg">Calculate the carbon footprint of your recipes</p>
     </div>
 
+    {% if error %}
+    <div class="bg-rose-50 border border-rose-200 text-rose-700 rounded-2xl px-5 py-4 mb-6 text-sm">
+        Could not import recipe: {{ error }}
+    </div>
+    {% endif %}
+
     <!-- Import from URL Card -->
     <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 mb-6">
         <h2 class="text-lg font-semibold text-slate-900 tracking-tight mb-4">Import from URL</h2>
@@ -30,7 +36,6 @@
         </form>
         <script>
         document.getElementById('scrapeForm').addEventListener('submit', function() {
-            document.getElementById('scrapeUrl').disabled = true;
             document.getElementById('scrapeBtn').disabled = true;
             document.getElementById('scrapeSpinner').classList.remove('hidden');
             document.getElementById('scrapeBtnText').textContent = 'Importing…';
